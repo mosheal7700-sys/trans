@@ -3,52 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>מתרגם חכם - גרסה יציבה</title>
+    <title>מתרגם חכם יציב</title>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: system-ui, Arial; overflow: hidden; background: #000; user-select: none; -webkit-user-select: none; }
         .container { display: flex; flex-direction: column; height: 100vh; }
-        .btn { 
-            flex: 1; border: 4px solid #111; color: white; font-size: 2.5rem; font-weight: bold; 
-            cursor: pointer; display: flex; align-items: center; justify-content: center; 
-            text-align: center; -webkit-tap-highlight-color: transparent; transition: all 0.1s;
-        }
+        .btn { flex: 1; border: 4px solid #111; color: white; font-size: 2.5rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; -webkit-tap-highlight-color: transparent; transition: all 0.1s; }
         #btn-en { background-color: #D32F2F; } 
         #btn-he { background-color: #1976D2; }
         .active { background-color: #FFD700 !important; color: black; border: 12px solid white; transform: scale(0.98); }
-        #log { 
-            position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.95); 
-            color: #0f0; font-size: 1.2rem; height: 120px; padding: 15px; 
-            box-sizing: border-box; text-align: center; border-top: 2px solid #333; pointer-events: none;
-            display: flex; align-items: center; justify-content: center; overflow-y: auto;
-        }
+        #log { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.95); color: #0f0; font-size: 1.1rem; height: 130px; padding: 15px; box-sizing: border-box; text-align: center; border-top: 2px solid #333; pointer-events: none; display: flex; align-items: center; justify-content: center; overflow-y: auto; line-height: 1.4; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="btn-en" class="btn" 
-         onmousedown="start('en-US','English','Hebrew')" onmouseup="stop()" 
-         ontouchstart="start('en-US','English','Hebrew')" ontouchend="stop()">
-         ENGLISH<br>(Hold)
-    </div>
-
-    <div id="btn-he" class="btn" 
-         onmousedown="start('he-IL','Hebrew','English')" onmouseup="stop()" 
-         ontouchstart="start('he-IL','Hebrew','English')" ontouchend="stop()">
-         עברית<br>(לחוץ)
-    </div>
+    <div id="btn-en" class="btn" onmousedown="start('en-US','English','Hebrew')" onmouseup="stop()" ontouchstart="start('en-US','English','Hebrew')" ontouchend="stop()">ENGLISH<br>(Hold)</div>
+    <div id="btn-he" class="btn" onmousedown="start('he-IL','Hebrew','English')" onmouseup="stop()" ontouchstart="start('he-IL','Hebrew','English')" ontouchend="stop()">עברית<br>(לחוץ)</div>
 </div>
-
 <div id="log">מוכן. החזק כפתור לדיבור.</div>
 
 <script>
-    // חשוב: השתמש במפתח המלא שהוצאת מ-AI Studio
+    // ודא שהמפתח כאן הוא המפתח המלא שהעתקת מה-AI Studio
     const GEMINI_API_KEY = "AIzaSyCHxen_2UYGojwjtFP7WfgJkHSAiNyhZ3U";
     
     const logDiv = document.getElementById('log');
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     const synth = window.speechSynthesis;
-    
     let curFrom, curTo, isHolding = false;
 
     recognition.continuous = false;
@@ -63,78 +43,53 @@
         if (isHolding) return;
         isHolding = true;
         synth.cancel();
-        curFrom = fromName; 
-        curTo = toName;
+        curFrom = fromName; curTo = toName;
         recognition.lang = lang;
-        
         const btn = (fromName === 'Hebrew') ? document.getElementById('btn-he') : document.getElementById('btn-en');
         btn.classList.add('active');
-        
-        try {
-            recognition.start();
-            debug("מקשיב... שחרר כשסיימת");
-        } catch (e) { console.error(e); }
+        try { recognition.start(); debug("מקשיב..."); } catch (e) {}
     }
 
     function stop() {
         if (!isHolding) return;
         isHolding = false;
         document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-        try { recognition.stop(); debug("מתרגם בבינה מלאכותית..."); } catch (e) {}
+        try { recognition.stop(); debug("מתרגם..."); } catch (e) {}
     }
 
     recognition.onresult = async (event) => {
         const text = event.results[0][0].transcript;
         debug("שמעתי: " + text);
-        
         try {
-            // כתובת API מעודכנת לגרסה הכי יציבה של Gemini 1.5 Flash
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+            // שינוי לגרסה v1 שהיא הכי יציבה ותואמת לכל המפתחות
+            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
             
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                            text: `Translate the following text from ${curFrom} to ${curTo}. Return ONLY the translation, no extra text: "${text}"`
-                        }]
-                    }]
+                    contents: [{ parts: [{ text: `Translate from ${curFrom} to ${curTo}: "${text}". Return only the translation.` }] }]
                 })
             });
 
             const data = await response.json();
-            
             if (data.error) {
-                debug("שגיאת API: " + data.error.message, true);
+                debug("שגיאה: " + data.error.message, true);
                 return;
             }
 
             if (data.candidates && data.candidates[0].content) {
-                let translated = data.candidates[0].content.parts[0].text.trim();
-                translated = translated.replace(/[*#]/g, ''); // ניקוי כוכביות
-                
+                let translated = data.candidates[0].content.parts[0].text.trim().replace(/[*#]/g, '');
                 debug(translated);
-                
                 const utterance = new SpeechSynthesisUtterance(translated);
                 utterance.lang = (curTo === 'Hebrew') ? 'he-IL' : 'en-US';
                 utterance.rate = 0.9;
                 synth.speak(utterance);
-            } else {
-                debug("לא התקבל תרגום מהשרת", true);
             }
-        } catch (error) {
-            debug("שגיאת תקשורת: וודא שיש אינטרנט", true);
-        }
+        } catch (error) { debug("שגיאת תקשורת", true); }
     };
 
-    recognition.onerror = (event) => {
-        isHolding = false;
-        document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-        if (event.error !== 'no-speech') {
-            debug("שגיאת מיקרופון: " + event.error, true);
-        }
-    };
+    recognition.onerror = () => { isHolding = false; document.querySelectorAll('.btn').forEach(b => b.classList.remove('active')); };
 </script>
 </body>
 </html>
