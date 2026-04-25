@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>מתרגם AI חסין</title>
+    <title>מתרגם AI עובד</title>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: sans-serif; overflow: hidden; background: #000; user-select: none; }
         .container { display: flex; flex-direction: column; height: 100vh; }
@@ -23,8 +23,8 @@
 <div id="log">מוכן.</div>
 
 <script>
-    // צור מפתח חדש ב-AI Studio אם השגיאה נמשכת
-    const API_KEY = "AIzaSyDXm3foh55sVR2tUSC_KJC6-UP0FcITJoA";
+    // שלב קריטי: צור מפתח חדש ב-AI Studio כי הקודם נחסם עקב חריגה (Quota Exceeded)
+    const API_KEY = "AIzaSyAulAMFwNHLLMRp36LHe3Al8aJdvTDtv74";
     
     const logDiv = document.getElementById('log');
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -58,31 +58,34 @@
         const text = event.results[0][0].transcript;
         debug("שמעתי: " + text);
         try {
-            // שימוש במודל 1.5 פלאש כדי לעקוף את חסימת המכסה של 2.0
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+            // זו הכתובת היציבה ביותר שמונעת את שגיאת ה-"Not Found" שראינו בצילומים
+            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
             
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: `Translate "${text}" from ${curFrom} to ${curTo}. Only the translation.` }] }]
+                    contents: [{ parts: [{ text: `Translate "${text}" from ${curFrom} to ${curTo}. Return only the translation.` }] }]
                 })
             });
 
             const data = await response.json();
             
             if (data.error) {
+                // הצגת השגיאה המדויקת אם המכסה שוב נגמרה
                 debug("שגיאה: " + data.error.message, true);
                 return;
             }
 
-            let trans = data.candidates[0].content.parts[0].text.trim().replace(/[*#]/g, '');
-            debug(trans);
-            
-            const ut = new SpeechSynthesisUtterance(trans);
-            ut.lang = (curTo === 'Hebrew') ? 'he-IL' : 'en-US';
-            ut.rate = 0.9;
-            synth.speak(ut);
+            if (data.candidates && data.candidates[0].content) {
+                let trans = data.candidates[0].content.parts[0].text.trim().replace(/[*#]/g, '');
+                debug(trans);
+                
+                const ut = new SpeechSynthesisUtterance(trans);
+                ut.lang = (curTo === 'Hebrew') ? 'he-IL' : 'en-US';
+                ut.rate = 0.9;
+                synth.speak(ut);
+            }
         } catch (e) { debug("שגיאת תקשורת", true); }
     };
 
