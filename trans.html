@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>מתרגם AI - גרסה סופית בהחלט</title>
+    <title>מתרגם חכם - גרסה עובדת</title>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: system-ui, Arial; overflow: hidden; background: #000; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: system-ui, Arial; overflow: hidden; background: #000; user-select: none; }
         .container { display: flex; flex-direction: column; height: 100vh; }
         .btn { flex: 1; border: 4px solid #111; color: white; font-size: 2.5rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; transition: all 0.1s; -webkit-tap-highlight-color: transparent; }
         #btn-en { background-color: #D32F2F; } 
         #btn-he { background-color: #1976D2; }
         .active { background-color: #FFD700 !important; color: black; border: 12px solid white; transform: scale(0.98); }
-        #log { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.95); color: #0f0; font-size: 1rem; min-height: 140px; padding: 15px; box-sizing: border-box; text-align: center; border-top: 2px solid #333; pointer-events: none; display: flex; align-items: center; justify-content: center; overflow-y: auto; }
+        #log { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.95); color: #0f0; font-size: 1.1rem; min-height: 140px; padding: 15px; box-sizing: border-box; text-align: center; border-top: 2px solid #333; pointer-events: none; display: flex; align-items: center; justify-content: center; overflow-y: auto; }
     </style>
 </head>
 <body>
@@ -20,11 +20,11 @@
     <div id="btn-en" class="btn" onmousedown="start('en-US','English','Hebrew')" onmouseup="stop()" ontouchstart="start('en-US','English','Hebrew')" ontouchend="stop()">ENGLISH</div>
     <div id="btn-he" class="btn" onmousedown="start('he-IL','Hebrew','English')" onmouseup="stop()" ontouchstart="start('he-IL','Hebrew','English')" ontouchend="stop()">עברית</div>
 </div>
-<div id="log">מוכן לשימוש.</div>
+<div id="log">מוכן.</div>
 
 <script>
-    // שים לב: צור מפתח חדש ב-AI Studio והדבק כאן
-    const GEMINI_API_KEY = "AIzaSyCzzx_RYqsat6_cmhB5DAz1YsnOJLhydOM";
+    // תשתמש במפתח שעבד לך בגרסה הקודמת
+    const API_KEY = "AIzaSyCzzx_RYqsat6_cmhB5DAz1YsnOJLhydOM";
     
     const logDiv = document.getElementById('log');
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -44,7 +44,7 @@
         isHolding = true;
         synth.cancel();
         curFrom = fromName; curTo = toName;
-        recognition.lang = lang;
+        recognition.lang = lang === 'English' ? 'en-US' : 'he-IL';
         const btn = (fromName === 'Hebrew') ? document.getElementById('btn-he') : document.getElementById('btn-en');
         btn.classList.add('active');
         try { recognition.start(); debug("מקשיב..."); } catch (e) {}
@@ -54,58 +54,55 @@
         if (!isHolding) return;
         isHolding = false;
         document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-        try { recognition.stop(); debug("מעבד..."); } catch (e) {}
-    }
-
-    async function askGemini(url, text) {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: `Translate "${text}" to ${curTo}. Return only the translation.` }] }]
-            })
-        });
-        return await response.json();
+        try { recognition.stop(); debug("מעבד תרגום..."); } catch (e) {}
     }
 
     recognition.onresult = async (event) => {
         const text = event.results[0][0].transcript;
         debug("שמעתי: " + text);
         
-        // נסיון 1: המודל החדש (Flash) בגרסת v1
-        let url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-        
         try {
-            let data = await askGemini(url, text);
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ 
+                        text: `Translate the following text from ${curFrom} to ${curTo}. 
+                        Context: A conversation between an elderly person and their caregiver.
+                        Rule: Return ONLY the translated text, no introductions.
+                        Text: "${text}"` 
+                    }] }]
+                })
+            });
 
-            // אם נכשל, נסיון 2: המודל החדש בגרסת v1beta
-            if (data.error) {
-                url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-                data = await askGemini(url, text);
-            }
-
-            // אם עדיין נכשל, נסיון 3: מודל Pro הישן והיציב
-            if (data.error) {
-                url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
-                data = await askGemini(url, text);
-            }
-
+            const data = await response.json();
+            
             if (data.candidates && data.candidates[0].content) {
-                let translated = data.candidates[0].content.parts[0].text.trim();
-                debug(translated);
-                const utterance = new SpeechSynthesisUtterance(translated);
-                utterance.lang = (curTo === 'Hebrew') ? 'he-IL' : 'en-US';
-                utterance.rate = 0.9;
-                synth.speak(utterance);
+                let trans = data.candidates[0].content.parts[0].text.trim();
+                
+                // ניקוי תווים מיוחדים שגורמים לקריין להיתקע
+                trans = trans.replace(/[*#_>]/g, ''); 
+                
+                debug("תרגום: " + trans);
+                
+                const ut = new SpeechSynthesisUtterance(trans);
+                ut.lang = (curTo === 'Hebrew') ? 'he-IL' : 'en-US';
+                ut.rate = 0.9; // קצב דיבור נוח לקשישים
+                synth.speak(ut);
             } else {
-                debug("שגיאה סופית: " + (data.error ? data.error.message : "לא התקבל תרגום"), true);
+                debug("לא התקבל תרגום תקין", true);
             }
-        } catch (error) {
-            debug("שגיאת חיבור לאינטרנט", true);
+        } catch (e) {
+            debug("שגיאה במנוע הבינה המלאכותית", true);
         }
     };
 
-    recognition.onerror = () => { isHolding = false; document.querySelectorAll('.btn').forEach(b => b.classList.remove('active')); };
+    recognition.onerror = () => {
+        isHolding = false;
+        document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+    };
 </script>
 </body>
 </html>
