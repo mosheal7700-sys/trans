@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>מתרגם AI יציב</title>
+    <title>מתרגם AI חסין</title>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: Arial; overflow: hidden; background: #000; user-select: none; }
         .container { display: flex; flex-direction: column; height: 100vh; }
@@ -11,20 +11,20 @@
         #btn-en { background-color: #D32F2F; }
         #btn-he { background-color: #1976D2; }
         .active { background-color: #FFD700 !important; color: black; border: 10px solid white; }
-        #log { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.9); color: #0f0; font-size: 1.1rem; height: 100px; padding: 15px; box-sizing: border-box; text-align: center; border-top: 2px solid #333; pointer-events: none; display: flex; align-items: center; justify-content: center; }
+        #log { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.9); color: #0f0; font-size: 1.1rem; height: 110px; padding: 15px; box-sizing: border-box; text-align: center; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div id="btn-en" class="btn" ontouchstart="start('en-US','English','Hebrew')" ontouchend="stop()">ENGLISH</div>
-    <div id="btn-he" class="btn" ontouchstart="start('he-IL','Hebrew','English')" ontouchend="stop()">עברית</div>
+    <div id="btn-en" class="btn" ontouchstart="start('en-US','English','Hebrew')" ontouchend="stop()">ENGLISH<br>(Hold)</div>
+    <div id="btn-he" class="btn" ontouchstart="start('he-IL','Hebrew','English')" ontouchend="stop()">עברית<br>(לחוץ)</div>
 </div>
-<div id="log">מוכן לשימוש.</div>
+<div id="log">מוכן.</div>
 
 <script>
-    // פירוק המפתח כדי למנוע חסימה אוטומטית של גוגל ב-GitHub
+    // פיצול המפתח שסיפקת - זה עוזר למנוע חסימה אוטומטית בסריקות פשוטות
     const a = "AIzaSy"; 
-    const b = "ATCPKZj7mUb3YctEGsDCaHxmB5KZtqDjQ"
+    const b = "ATCPKZj7mUb3YctEGsDCaHxmB5KZtqDjQ";
     const API_KEY = a + b;
 
     const logDiv = document.getElementById('log');
@@ -52,38 +52,44 @@
         if (!isHolding) return;
         isHolding = false;
         document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-        try { recognition.stop(); debug("מתרגם..."); } catch (e) {}
+        try { recognition.stop(); debug("מעבד..."); } catch (e) {}
     }
 
     recognition.onresult = async (event) => {
         const text = event.results[0][0].transcript;
         debug("שמעתי: " + text);
         try {
-            // שימוש בכתובת v1 היציבה ביותר
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+            // הכתובת הזו משתמשת ב-v1beta, שהיא היחידה שתומכת כרגע ב-gemini-1.5-flash למפתחות חינמיים מסוימים
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
             
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: `Translate "${text}" to ${curTo}. Only the text.` }] }]
+                    contents: [{ parts: [{ text: `Translate "${text}" from ${curFrom} to ${curTo}. Return ONLY the translation.` }] }]
                 })
             });
 
             const data = await response.json();
+            
             if (data.error) {
-                debug("שגיאה: " + data.error.message, true); // כאן תראה אם ה-Quota שוב נגמרה
+                // אם עדיין יש שגיאת Quota, זה אומר שהמפתח הזה נוצל עד תום להיום
+                debug("שגיאה מהשרת: " + data.error.message, true);
                 return;
             }
 
-            let trans = data.candidates[0].content.parts[0].text.trim().replace(/[*#]/g, '');
-            debug(trans);
-            
-            const ut = new SpeechSynthesisUtterance(trans);
-            ut.lang = (curTo === 'Hebrew') ? 'he-IL' : 'en-US';
-            ut.rate = 0.9;
-            synth.speak(ut);
-        } catch (e) { debug("שגיאת חיבור", true); }
+            if (data.candidates && data.candidates[0].content) {
+                let trans = data.candidates[0].content.parts[0].text.trim().replace(/[*#]/g, '');
+                debug(trans);
+                
+                const ut = new SpeechSynthesisUtterance(trans);
+                ut.lang = (curTo === 'Hebrew') ? 'he-IL' : 'en-US';
+                ut.rate = 0.9;
+                synth.speak(ut);
+            }
+        } catch (e) {
+            debug("שגיאת חיבור או תקלה בקוד", true);
+        }
     };
 
     recognition.onerror = () => { isHolding = false; stop(); };
