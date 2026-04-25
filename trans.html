@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>מתרגם חכם - מכשיר קשר</title>
+    <title>מתרגם חכם - גרסה סופית</title>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: system-ui, Arial; overflow: hidden; background: #000; user-select: none; -webkit-user-select: none; }
         .container { display: flex; flex-direction: column; height: 100vh; }
@@ -12,16 +12,14 @@
             cursor: pointer; display: flex; align-items: center; justify-content: center; 
             text-align: center; -webkit-tap-highlight-color: transparent; transition: all 0.1s;
         }
-        #btn-en { background-color: #D32F2F; } /* אדום למטפל */
-        #btn-he { background-color: #1976D2; } /* כחול לקשיש */
-        
+        #btn-en { background-color: #D32F2F; } 
+        #btn-he { background-color: #1976D2; }
         .active { background-color: #FFD700 !important; color: black; border: 12px solid white; transform: scale(0.98); }
-        
         #log { 
             position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.95); 
-            color: #0f0; font-size: 1.2rem; height: 100px; padding: 15px; 
+            color: #0f0; font-size: 1.2rem; height: 110px; padding: 15px; 
             box-sizing: border-box; text-align: center; border-top: 2px solid #333; pointer-events: none;
-            display: flex; align-items: center; justify-content: center;
+            display: flex; align-items: center; justify-content: center; overflow-y: auto;
         }
     </style>
 </head>
@@ -41,11 +39,11 @@
     </div>
 </div>
 
-<div id="log">מוכן. החזק כפתור כדי לדבר.</div>
+<div id="log">מוכן. החזק כפתור לדיבור.</div>
 
 <script>
-    // הגדרות מפתח - הכנס כאן את המפתח שקיבלת מגוגל
-const GEMINI_API_KEY = "AIzaSyCHxen_2UYGojwjtFP7WfgJkHSAiNyhZ3U";
+    // הגדרות מפתח - וודא שהעתקת את המפתח המלא!
+    const GEMINI_API_KEY = "AIzaSyCHxen_2UYGojwjtFP7WfgJkHSAiNyhZ3U";
     
     const logDiv = document.getElementById('log');
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -61,30 +59,22 @@ const GEMINI_API_KEY = "AIzaSyCHxen_2UYGojwjtFP7WfgJkHSAiNyhZ3U";
     function start(lang, from, to) {
         if (isHolding) return;
         isHolding = true;
-        
-        // עצירת הקראה קודמת אם קיימת
         synth.cancel();
-        
         curFrom = from; curTo = to;
         recognition.lang = lang;
-        
         const btn = (from === 'he') ? document.getElementById('btn-he') : document.getElementById('btn-en');
         btn.classList.add('active');
-
         try {
             recognition.start();
             debug("מקשיב... (שחרר כשסיימת)");
-        } catch (e) { console.error("Recognition start error:", e); }
+        } catch (e) { console.error(e); }
     }
 
     function stop() {
         if (!isHolding) return;
         isHolding = false;
         document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-        try { 
-            recognition.stop(); 
-            debug("מעבד תרגום חכם..."); 
-        } catch (e) { console.error("Recognition stop error:", e); }
+        try { recognition.stop(); debug("מעבד תרגום..."); } catch (e) {}
     }
 
     recognition.onresult = async (event) => {
@@ -92,43 +82,36 @@ const GEMINI_API_KEY = "AIzaSyCHxen_2UYGojwjtFP7WfgJkHSAiNyhZ3U";
         debug("שמעתי: " + text);
         
         try {
-            const sourceLang = (curFrom === 'he') ? 'Hebrew' : 'English';
-            const targetLang = (curTo === 'he') ? 'Hebrew' : 'English';
-            
-            // פנייה ל-Gemini API
+            const prompt = `Translate simply from ${curFrom} to ${curTo}: "${text}". Return ONLY the translated text.`;
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                            text: `אתה מתרגם מסור. תרגם את המשפט הבא מ${sourceLang} ל-${targetLang}. 
-                                   התרגום צריך להיות פשוט, ברור ומותאם לשיחה בין קשיש למטפל.
-                                   תחזיר אך ורק את הטקסט המתורגם, ללא הערות נוספות.
-                                   המשפט: "${text}"`
-                        }]
-                    }]
+                    contents: [{ parts: [{ text: prompt }] }]
                 })
             });
 
             const data = await response.json();
             
-            if (data.candidates && data.candidates[0].content) {
-                const translatedText = data.candidates[0].content.parts[0].text.trim();
-                debug("תרגום: " + translatedText);
-                
-                // הקראה
-                const utterance = new SpeechSynthesisUtterance(translatedText);
-                utterance.lang = (curTo === 'he') ? 'he-IL' : 'en-US';
-                utterance.rate = 0.9; // קצב רגוע
-                synth.speak(utterance);
-            } else {
-                throw new Error("No translation found");
+            if (data.error) {
+                debug("שגיאה במפתח: " + data.error.message);
+                return;
             }
 
+            if (data.candidates && data.candidates[0].content) {
+                let translatedText = data.candidates[0].content.parts[0].text.trim();
+                
+                // ניקוי תווים מיוחדים (כוכביות וכדומה)
+                translatedText = translatedText.replace(/[*#]/g, '');
+                
+                debug("תרגום: " + translatedText);
+                const utterance = new SpeechSynthesisUtterance(translatedText);
+                utterance.lang = (curTo === 'he') ? 'he-IL' : 'en-US';
+                utterance.rate = 0.9;
+                synth.speak(utterance);
+            }
         } catch (error) {
-            console.error("Gemini Error:", error);
-            debug("שגיאה במנוע התרגום.");
+            debug("שגיאת תקשורת עם המנוע החכם.");
         }
     };
 
@@ -136,14 +119,17 @@ const GEMINI_API_KEY = "AIzaSyCHxen_2UYGojwjtFP7WfgJkHSAiNyhZ3U";
         isHolding = false;
         document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
         if (event.error === 'not-allowed') {
-            alert("יש לאשר גישה למיקרופון בהגדרות הדפדפן.");
+            debug("חובה לאשר מיקרופון בהגדרות הדפדפן.");
+        } else if (event.error === 'no-speech') {
+            debug("לא שמעתי, נסה שוב.");
+        } else {
+            debug("שגיאה: " + event.error);
         }
-        debug("מוכן. נסה שוב.");
     };
 
     recognition.onend = () => {
-        if (!isHolding && logDiv.innerText.includes("מקשיב")) {
-            debug("ההקלטה הופסקה.");
+        if (!isHolding && !logDiv.innerText.includes("תרגום")) {
+            setTimeout(() => { if (!synth.speaking) debug("מוכן."); }, 2000);
         }
     };
 </script>
