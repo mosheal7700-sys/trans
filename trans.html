@@ -3,27 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>מתרגם פשוט</title>
+    <title>מתרגם Gemini חכם</title>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: Arial; overflow: hidden; background: #000; user-select: none; -webkit-user-select: none; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; background: #121212; user-select: none; -webkit-user-select: none; }
         .container { display: flex; flex-direction: column; height: 100vh; }
-        .btn { flex: 1; border: 4px solid #111; color: white; font-size: 2.2rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; -webkit-tap-highlight-color: transparent; }
-        #btn-en { background-color: #D32F2F; } 
-        #btn-he { background-color: #1976D2; }
-        .active { background-color: #FFD700 !important; color: black; }
-        #log { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.9); color: #0f0; font-size: 1.1rem; height: 90px; padding: 15px; box-sizing: border-box; text-align: center; border-top: 2px solid #333; pointer-events: none; }
+        .btn { flex: 1; border: 2px solid #333; color: white; font-size: 2.5rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; -webkit-tap-highlight-color: transparent; transition: background 0.2s; }
+        #btn-en { background-color: #b71c1c; } 
+        #btn-he { background-color: #0d47a1; }
+        .active { background-color: #ffd600 !important; color: black; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); }
+        #log { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.95); color: #4caf50; font-size: 1.2rem; height: 110px; padding: 15px; box-sizing: border-box; text-align: center; border-top: 2px solid #444; pointer-events: none; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        .small-text { font-size: 0.9rem; color: #aaa; margin-top: 5px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="btn-en" class="btn" onmousedown="start('en-US','en','he')" onmouseup="stop()" ontouchstart="start('en-US','en','he')" ontouchend="stop()">ENGLISH<br>(Hold)</div>
-    <div id="btn-he" class="btn" onmousedown="start('he-IL','he','en')" onmouseup="stop()" ontouchstart="start('he-IL','he','en')" ontouchend="stop()">עברית<br>(לחוץ)</div>
+    <div id="btn-en" class="btn" onmousedown="start('en-US','English','Hebrew')" onmouseup="stop()" ontouchstart="start('en-US','English','Hebrew')" ontouchend="stop()">ENGLISH</div>
+    <div id="btn-he" class="btn" onmousedown="start('he-IL','Hebrew','English')" onmouseup="stop()" ontouchstart="start('he-IL','Hebrew','English')" ontouchend="stop()">עברית</div>
 </div>
-<div id="log">מוכן. החזק כפתור כדי לדבר.</div>
+<div id="log">
+    <div id="status">מוכן. החזק כפתור כדי לדבר.</div>
+    <div class="small-text">מופעל ע"י Gemini 1.5 Flash</div>
+</div>
 
 <script>
-    const logDiv = document.getElementById('log');
+    // --- הגדרות Gemini ---
+    const GEMINI_API_KEY = 'AIzaSyCzzx_RYqsat6_cmhB5DAz1YsnOJLhydOM'; 
+    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+    const logDiv = document.getElementById('status');
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     const synth = window.speechSynthesis;
     let curFrom, curTo, isHolding = false;
@@ -40,12 +48,12 @@
         curFrom = from; curTo = to;
         recognition.lang = lang;
         
-        const btn = from === 'he' ? document.getElementById('btn-he') : document.getElementById('btn-en');
+        const btn = from === 'Hebrew' ? document.getElementById('btn-he') : document.getElementById('btn-en');
         btn.classList.add('active');
 
         try {
             recognition.start();
-            debug("מקשיב... שחרר כשסיימת");
+            debug("מקשיב...");
         } catch (e) { console.error(e); }
     }
 
@@ -53,31 +61,52 @@
         if (!isHolding) return;
         isHolding = false;
         document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-        try { recognition.stop(); debug("מעבד..."); } catch (e) {}
+        try { recognition.stop(); debug("מעבד ב-Gemini..."); } catch (e) {}
     }
 
     recognition.onresult = async (event) => {
         const text = event.results[0][0].transcript;
         debug("שמעתי: " + text);
+        
         try {
-            const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${curFrom}|${curTo}`);
-            const data = await res.json();
-            const trans = data.responseData.translatedText;
-            debug("תרגום: " + trans);
-            const ut = new SpeechSynthesisUtterance(trans);
-            ut.lang = (curTo === 'he') ? 'he-IL' : 'en-US';
+            const translatedText = await translateWithGemini(text, curFrom, curTo);
+            debug("תרגום: " + translatedText);
+            
+            const ut = new SpeechSynthesisUtterance(translatedText);
+            ut.lang = (curTo === 'Hebrew') ? 'he-IL' : 'en-US';
             synth.speak(ut);
-        } catch (e) { debug("שגיאה בחיבור"); }
+        } catch (e) { 
+            debug("שגיאה בתרגום");
+            console.error(e);
+        }
     };
+
+    async function translateWithGemini(text, from, to) {
+        // בניית הפרומפט בצורה שתחזיר רק את התרגום נטו
+        const prompt = `Translate the following text from ${from} to ${to}. Return ONLY the translated text, no explanations, no conversational filler:\n\n"${text}"`;
+
+        const response = await fetch(GEMINI_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+            })
+        });
+
+        const data = await response.json();
+        
+        if (data.candidates && data.candidates[0].content.parts[0].text) {
+            return data.candidates[0].content.parts[0].text.trim();
+        } else {
+            throw new Error("Invalid response from Gemini");
+        }
+    }
 
     recognition.onerror = (e) => {
         isHolding = false;
         document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
         if (e.error === 'not-allowed') {
-            alert("חובה לאשר מיקרופון בהגדרות הדפדפן למעלה (ליד הכתובת)");
-            debug("אין אישור מיקרופון");
-        } else if (e.error !== 'no-speech') {
-            debug("שגיאה: " + e.error);
+            alert("חובה לאשר מיקרופון");
         }
     };
 </script>
