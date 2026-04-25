@@ -10,8 +10,8 @@
         .btn { flex: 1; border: 4px solid #111; color: white; font-size: 2.2rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; -webkit-tap-highlight-color: transparent; }
         #btn-en { background-color: #D32F2F; }
         #btn-he { background-color: #1976D2; }
-        .active { background-color: #FFD700 !important; color: black; }
-        #log { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.9); color: #0f0; font-size: 1.1rem; height: 90px; padding: 15px; box-sizing: border-box; text-align: center; border-top: 2px solid #333; pointer-events: none; }
+        .active { background-color: #FFD700 !important; color: black; border: 10px solid white; }
+        #log { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.9); color: #0f0; font-size: 1.1rem; height: 110px; padding: 15px; box-sizing: border-box; text-align: center; border-top: 2px solid #333; pointer-events: none; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
@@ -20,18 +20,26 @@
     <div id="btn-he" class="btn" onmousedown="start('he-IL','he','en')" onmouseup="stop()" ontouchstart="start('he-IL','he','en')" ontouchend="stop()">עברית<br>(לחוץ)</div>
 </div>
 <div id="log">מוכן. החזק כפתור כדי לדבר.</div>
+
 <script>
+    // שים לב: השתמש במפתח החדש שיצרת ב-AI Studio
     const GEMINI_API_KEY = "AIzaSyCzzx_RYqsat6_cmhB5DAz1YsnOJLhydOM";
-    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    
+    // שימוש במודל 1.5 פלאש - הכי יציב ומהיר כרגע
+    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
     const logDiv = document.getElementById('log');
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     const synth = window.speechSynthesis;
     let curFrom, curTo, isHolding = false;
+    
     recognition.continuous = false;
     recognition.interimResults = false;
 
-    function debug(msg) { logDiv.innerText = msg; }
+    function debug(msg, isError = false) { 
+        logDiv.innerText = msg; 
+        logDiv.style.color = isError ? "#ff4444" : "#0f0";
+    }
 
     function start(lang, from, to) {
         if (isHolding) return;
@@ -43,7 +51,7 @@
         btn.classList.add('active');
         try {
             recognition.start();
-            debug("מקשיב... שחרר כשסיימת");
+            debug("מקשיב...");
         } catch (e) { console.error(e); }
     }
 
@@ -60,39 +68,43 @@
         const text = event.results[0][0].transcript;
         debug("שמעתי: " + text);
         try {
-            const prompt = `Translate the following text from ${LANG_NAMES[curFrom]} to ${LANG_NAMES[curTo]}. Return ONLY the translated text, nothing else, no explanations.\n\nText: ${text}`;
+            const prompt = `Translate the following text from ${LANG_NAMES[curFrom]} to ${LANG_NAMES[curTo]}. Context: conversation between elderly and caregiver. Return ONLY the translation.\n\nText: ${text}`;
+            
             const res = await fetch(GEMINI_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: { temperature: 0.1, maxOutputTokens: 500 }
+                    generationConfig: { temperature: 0.1 }
                 })
             });
+
             if (!res.ok) {
                 const err = await res.json();
-                debug("שגיאת API: " + (err.error?.message || res.status));
+                debug("שגיאה: " + (err.error?.message || "בעיית חיבור"), true);
                 return;
             }
+
             const data = await res.json();
-            const trans = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-            if (!trans) { debug("לא התקבל תרגום"); return; }
-            debug("תרגום: " + trans);
-            const ut = new SpeechSynthesisUtterance(trans);
-            ut.lang = (curTo === 'he') ? 'he-IL' : 'en-US';
-            synth.speak(ut);
-        } catch (e) { debug("שגיאה בחיבור: " + e.message); }
+            let trans = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+            
+            if (trans) {
+                // ניקוי תווים מיוחדים
+                trans = trans.replace(/[*#]/g, '');
+                debug(trans);
+                
+                const ut = new SpeechSynthesisUtterance(trans);
+                ut.lang = (curTo === 'he') ? 'he-IL' : 'en-US';
+                ut.rate = 0.9;
+                synth.speak(ut);
+            }
+        } catch (e) { debug("שגיאה: " + e.message, true); }
     };
 
     recognition.onerror = (e) => {
         isHolding = false;
         document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-        if (e.error === 'not-allowed') {
-            alert("חובה לאשר מיקרופון בהגדרות הדפדפן למעלה (ליד הכתובת)");
-            debug("אין אישור מיקרופון");
-        } else if (e.error !== 'no-speech') {
-            debug("שגיאה: " + e.error);
-        }
+        if (e.error !== 'no-speech') debug("שגיאה: " + e.error, true);
     };
 </script>
 </body>
