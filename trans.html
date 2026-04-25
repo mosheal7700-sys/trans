@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>מתרגם חכם - גרסת תיקון</title>
+    <title>מתרגם חכם - גרסה יציבה</title>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: system-ui, Arial; overflow: hidden; background: #000; user-select: none; -webkit-user-select: none; }
         .container { display: flex; flex-direction: column; height: 100vh; }
@@ -23,7 +23,7 @@
 <div id="log">מוכן. החזק כפתור לדיבור.</div>
 
 <script>
-    // ודא שזה המפתח המלא!
+    // שים לב: אם המפתח הזה נחסם, צור חדש ב-AI Studio והדבק פה
     const GEMINI_API_KEY = "AIzaSyCHxen_2UYGojwjtFP7WfgJkHSAiNyhZ3U";
     
     const logDiv = document.getElementById('log');
@@ -54,33 +54,30 @@
         if (!isHolding) return;
         isHolding = false;
         document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-        try { recognition.stop(); debug("מתרגם..."); } catch (e) {}
+        try { recognition.stop(); debug("מעבד..."); } catch (e) {}
     }
 
     recognition.onresult = async (event) => {
         const text = event.results[0][0].transcript;
         debug("שמעתי: " + text);
         try {
-            // ניסיון עם המודל הכי נפוץ כרגע בגרסת v1beta
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+            // זו הכתובת הכי מעודכנת והכי יציבה כרגע (v1)
+            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
             
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: `Translate from ${curFrom} to ${curTo}: "${text}". Return only the translation.` }] }]
+                    contents: [{ parts: [{ text: `Translate simple from ${curFrom} to ${curTo}: "${text}". Return only translation.` }] }]
                 })
             });
 
             const data = await response.json();
             
-            // אם המודל הקודם נכשל, ננסה אוטומטית מודל חלופי (Fallback)
             if (data.error) {
-                 debug("מנסה מודל חלופי...", true);
-                 const fallbackUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
-                 // כאן אפשר להוסיף לוגיקה לניסיון שני, אבל בוא נתמקד בזה שה-URL למעלה יעבוד.
-                 debug("שגיאה: " + data.error.message, true);
-                 return;
+                // אם גם זה נכשל, ננסה להציג מה השרת באמת רוצה
+                debug("שגיאה: " + data.error.message, true);
+                return;
             }
 
             if (data.candidates && data.candidates[0].content) {
@@ -94,7 +91,10 @@
         } catch (error) { debug("שגיאת תקשורת", true); }
     };
 
-    recognition.onerror = () => { isHolding = false; document.querySelectorAll('.btn').forEach(b => b.classList.remove('active')); };
+    recognition.onerror = () => { 
+        isHolding = false; 
+        document.querySelectorAll('.btn').forEach(b => b.classList.remove('active')); 
+    };
 </script>
 </body>
 </html>
