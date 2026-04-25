@@ -1,28 +1,85 @@
-recognition.onresult = async (event) => {
-    const text = event.results[0][0].transcript;
-    debug("שמעתי: " + text);
-    
-    try {
-        debug("מתרגם בבינה מלאכותית...");
-        const API_KEY = "הכנס_כאן_את_המפתח_שלך";
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
-        
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: `Translate this from ${curFrom} to ${curTo} for an elderly person and their caregiver: "${text}"` }] }]
-            })
-        });
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>מתרגם פשוט</title>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: Arial; overflow: hidden; background: #000; user-select: none; -webkit-user-select: none; }
+        .container { display: flex; flex-direction: column; height: 100vh; }
+        .btn { flex: 1; border: 4px solid #111; color: white; font-size: 2.2rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; -webkit-tap-highlight-color: transparent; }
+        #btn-en { background-color: #D32F2F; } 
+        #btn-he { background-color: #1976D2; }
+        .active { background-color: #FFD700 !important; color: black; }
+        #log { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.9); color: #0f0; font-size: 1.1rem; height: 90px; padding: 15px; box-sizing: border-box; text-align: center; border-top: 2px solid #333; pointer-events: none; }
+    </style>
+</head>
+<body>
 
-        const data = await response.json();
-        const trans = data.candidates[0].content.parts[0].text;
+<div class="container">
+    <div id="btn-en" class="btn" onmousedown="start('en-US','en','he')" onmouseup="stop()" ontouchstart="start('en-US','en','he')" ontouchend="stop()">ENGLISH<br>(Hold)</div>
+    <div id="btn-he" class="btn" onmousedown="start('he-IL','he','en')" onmouseup="stop()" ontouchstart="start('he-IL','he','en')" ontouchend="stop()">עברית<br>(לחוץ)</div>
+</div>
+<div id="log">מוכן. החזק כפתור כדי לדבר.</div>
+
+<script>
+    const logDiv = document.getElementById('log');
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    const synth = window.speechSynthesis;
+    let curFrom, curTo, isHolding = false;
+
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    function debug(msg) { logDiv.innerText = msg; }
+
+    function start(lang, from, to) {
+        if (isHolding) return;
+        isHolding = true;
+        synth.cancel();
+        curFrom = from; curTo = to;
+        recognition.lang = lang;
         
-        debug("תרגום: " + trans);
-        const ut = new SpeechSynthesisUtterance(trans);
-        ut.lang = (curTo === 'he') ? 'he-IL' : 'en-US';
-        synth.speak(ut);
-    } catch (e) {
-        debug("שגיאה במנוע הבינה המלאכותית");
+        const btn = from === 'he' ? document.getElementById('btn-he') : document.getElementById('btn-en');
+        btn.classList.add('active');
+
+        try {
+            recognition.start();
+            debug("מקשיב... שחרר כשסיימת");
+        } catch (e) { console.error(e); }
     }
-};
+
+    function stop() {
+        if (!isHolding) return;
+        isHolding = false;
+        document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        try { recognition.stop(); debug("מעבד..."); } catch (e) {}
+    }
+
+    recognition.onresult = async (event) => {
+        const text = event.results[0][0].transcript;
+        debug("שמעתי: " + text);
+        try {
+            const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${curFrom}|${curTo}`);
+            const data = await res.json();
+            const trans = data.responseData.translatedText;
+            debug("תרגום: " + trans);
+            const ut = new SpeechSynthesisUtterance(trans);
+            ut.lang = (curTo === 'he') ? 'he-IL' : 'en-US';
+            synth.speak(ut);
+        } catch (e) { debug("שגיאה בחיבור"); }
+    };
+
+    recognition.onerror = (e) => {
+        isHolding = false;
+        document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        if (e.error === 'not-allowed') {
+            alert("חובה לאשר מיקרופון בהגדרות הדפדפן למעלה (ליד הכתובת)");
+            debug("אין אישור מיקרופון");
+        } else if (e.error !== 'no-speech') {
+            debug("שגיאה: " + e.error);
+        }
+    };
+</script>
+</body>
+</html>
