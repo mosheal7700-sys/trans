@@ -3,27 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>מתרגם Gemini Pro</title>
+    <title>מתרגם AI חסין</title>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: Arial; overflow: hidden; background: #000; user-select: none; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: sans-serif; overflow: hidden; background: #000; user-select: none; }
         .container { display: flex; flex-direction: column; height: 100vh; }
-        .btn { flex: 1; border: 4px solid #111; color: white; font-size: 2.2rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; }
+        .btn { flex: 1; border: 4px solid #111; color: white; font-size: 2.5rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; -webkit-tap-highlight-color: transparent; }
         #btn-en { background-color: #D32F2F; }
         #btn-he { background-color: #1976D2; }
-        .active { background-color: #FFD700 !important; color: black; border: 10px solid white; }
-        #log { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.9); color: #0f0; font-size: 1.1rem; height: 120px; padding: 15px; box-sizing: border-box; text-align: center; display: flex; align-items: center; justify-content: center; }
+        .active { background-color: #FFD700 !important; color: black; border: 12px solid white; }
+        #log { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.95); color: #0f0; font-size: 1.1rem; min-height: 120px; padding: 15px; box-sizing: border-box; text-align: center; border-top: 2px solid #333; pointer-events: none; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
+
 <div class="container">
     <div id="btn-en" class="btn" ontouchstart="start('en-US','English','Hebrew')" ontouchend="stop()">ENGLISH<br>(Hold)</div>
     <div id="btn-he" class="btn" ontouchstart="start('he-IL','Hebrew','English')" ontouchend="stop()">עברית<br>(לחוץ)</div>
 </div>
-<div id="log">הכנס מפתח חדש בקוד כדי להתחיל</div>
+<div id="log">מוכן.</div>
 
 <script>
-    // שים כאן את המפתח החדש שיצרת (הקודם נחסם)
-    const API_KEY = "AIzaSyDfieHwY6cVZfMVbBLuajWnY0gc_ge-4FQ";
+    // צור מפתח חדש ב-AI Studio אם השגיאה נמשכת
+    const API_KEY = "AIzaSyDXm3foh55sVR2tUSC_KJC6-UP0FcITJoA";
     
     const logDiv = document.getElementById('log');
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -41,7 +42,7 @@
         synth.cancel();
         curFrom = from; curTo = to;
         recognition.lang = lang;
-        const btn = from === 'Hebrew' ? document.getElementById('btn-he') : document.getElementById('btn-en');
+        const btn = (from === 'Hebrew') ? document.getElementById('btn-he') : document.getElementById('btn-en');
         btn.classList.add('active');
         try { recognition.start(); debug("מקשיב..."); } catch (e) {}
     }
@@ -56,10 +57,9 @@
     recognition.onresult = async (event) => {
         const text = event.results[0][0].transcript;
         debug("שמעתי: " + text);
-        
         try {
-            // שימוש בגרסה v1beta עם המודל החדש ביותר
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
+            // שימוש במודל 1.5 פלאש כדי לעקוף את חסימת המכסה של 2.0
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
             
             const response = await fetch(url, {
                 method: 'POST',
@@ -83,9 +83,7 @@
             ut.lang = (curTo === 'Hebrew') ? 'he-IL' : 'en-US';
             ut.rate = 0.9;
             synth.speak(ut);
-        } catch (e) {
-            debug("שגיאת תקשורת", true);
-        }
+        } catch (e) { debug("שגיאת תקשורת", true); }
     };
 
     recognition.onerror = () => { isHolding = false; stop(); };
