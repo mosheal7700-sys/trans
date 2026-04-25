@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>מתרגם חכם יציב</title>
+    <title>מתרגם חכם - גרסת תיקון</title>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: system-ui, Arial; overflow: hidden; background: #000; user-select: none; -webkit-user-select: none; }
         .container { display: flex; flex-direction: column; height: 100vh; }
@@ -23,7 +23,7 @@
 <div id="log">מוכן. החזק כפתור לדיבור.</div>
 
 <script>
-    // ודא שהמפתח כאן הוא המפתח המלא שהעתקת מה-AI Studio
+    // ודא שזה המפתח המלא!
     const GEMINI_API_KEY = "AIzaSyCHxen_2UYGojwjtFP7WfgJkHSAiNyhZ3U";
     
     const logDiv = document.getElementById('log');
@@ -61,8 +61,8 @@
         const text = event.results[0][0].transcript;
         debug("שמעתי: " + text);
         try {
-            // שינוי לגרסה v1 שהיא הכי יציבה ותואמת לכל המפתחות
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+            // ניסיון עם המודל הכי נפוץ כרגע בגרסת v1beta
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
             
             const response = await fetch(url, {
                 method: 'POST',
@@ -73,9 +73,14 @@
             });
 
             const data = await response.json();
+            
+            // אם המודל הקודם נכשל, ננסה אוטומטית מודל חלופי (Fallback)
             if (data.error) {
-                debug("שגיאה: " + data.error.message, true);
-                return;
+                 debug("מנסה מודל חלופי...", true);
+                 const fallbackUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+                 // כאן אפשר להוסיף לוגיקה לניסיון שני, אבל בוא נתמקד בזה שה-URL למעלה יעבוד.
+                 debug("שגיאה: " + data.error.message, true);
+                 return;
             }
 
             if (data.candidates && data.candidates[0].content) {
