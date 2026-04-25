@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>מתרגם חכם - גרסה יציבה</title>
+    <title>מתרגם AI יציב</title>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: system-ui, Arial; overflow: hidden; background: #000; user-select: none; -webkit-user-select: none; }
         .container { display: flex; flex-direction: column; height: 100vh; }
@@ -11,7 +11,7 @@
         #btn-en { background-color: #D32F2F; } 
         #btn-he { background-color: #1976D2; }
         .active { background-color: #FFD700 !important; color: black; border: 12px solid white; transform: scale(0.98); }
-        #log { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.95); color: #0f0; font-size: 1.1rem; height: 130px; padding: 15px; box-sizing: border-box; text-align: center; border-top: 2px solid #333; pointer-events: none; display: flex; align-items: center; justify-content: center; overflow-y: auto; line-height: 1.4; }
+        #log { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.95); color: #0f0; font-size: 1.1rem; min-height: 130px; padding: 15px; box-sizing: border-box; text-align: center; border-top: 2px solid #333; pointer-events: none; display: flex; align-items: center; justify-content: center; overflow-y: auto; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -23,8 +23,8 @@
 <div id="log">מוכן. החזק כפתור לדיבור.</div>
 
 <script>
-    // שים לב: אם המפתח הזה נחסם, צור חדש ב-AI Studio והדבק פה
-    const GEMINI_API_KEY = "AIzaSyCHxen_2UYGojwjtFP7WfgJkHSAiNyhZ3U";
+    // החלף את המירכאות למטה במפתח החדש שיצרת
+    const GEMINI_API_KEY = "הכנס_כאן_מפתח_חדש";
     
     const logDiv = document.getElementById('log');
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -61,21 +61,20 @@
         const text = event.results[0][0].transcript;
         debug("שמעתי: " + text);
         try {
-            // זו הכתובת הכי מעודכנת והכי יציבה כרגע (v1)
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+            // זו הכתובת הכי מדויקת נכון להיום
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
             
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: `Translate simple from ${curFrom} to ${curTo}: "${text}". Return only translation.` }] }]
+                    contents: [{ parts: [{ text: `Translate simply from ${curFrom} to ${curTo}: "${text}". Return only the translation.` }] }]
                 })
             });
 
             const data = await response.json();
             
             if (data.error) {
-                // אם גם זה נכשל, ננסה להציג מה השרת באמת רוצה
                 debug("שגיאה: " + data.error.message, true);
                 return;
             }
@@ -88,13 +87,10 @@
                 utterance.rate = 0.9;
                 synth.speak(utterance);
             }
-        } catch (error) { debug("שגיאת תקשורת", true); }
+        } catch (error) { debug("שגיאת תקשורת במכשיר", true); }
     };
 
-    recognition.onerror = () => { 
-        isHolding = false; 
-        document.querySelectorAll('.btn').forEach(b => b.classList.remove('active')); 
-    };
+    recognition.onerror = () => { isHolding = false; document.querySelectorAll('.btn').forEach(b => b.classList.remove('active')); };
 </script>
 </body>
 </html>
