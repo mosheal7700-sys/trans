@@ -24,35 +24,62 @@
 
 <div class="container">
     <div class="top-bar">
-        <select id="lang1">
-            <option value="Hebrew" data-code="he-IL" selected>עברית</option>
-            <option value="English" data-code="en-US">English</option>
+
+        <!-- שפה 1 — עברית / אנגלית בלבד -->
+        <select id="lang1" onchange="updateButtons()">
+            <option value="Hebrew" data-code="he-IL" selected>עברית (Hebrew)</option>
+            <option value="English" data-code="en-US">אנגלית (English)</option>
         </select>
-        <select id="lang2">
-            <option value="English" data-code="en-US" selected>English</option>
-            <option value="Hebrew" data-code="he-IL">עברית</option>
+
+        <!-- שפה 2 — רשימת שפות מלאה עם שמות בעברית -->
+        <select id="lang2" onchange="updateButtons()">
+            <option value="English" data-code="en-US" selected>אנגלית (English)</option>
+            <option value="Hebrew" data-code="he-IL">עברית (Hebrew)</option>
+            <option value="Arabic" data-code="ar-SA">ערבית (Arabic)</option>
+            <option value="French" data-code="fr-FR">צרפתית (Français)</option>
+            <option value="Spanish" data-code="es-ES">ספרדית (Español)</option>
+            <option value="Russian" data-code="ru-RU">רוסית (Русский)</option>
+            <option value="Chinese" data-code="zh-CN">סינית (中文)</option>
+            <option value="Japanese" data-code="ja-JP">יפנית (日本語)</option>
+            <option value="Korean" data-code="ko-KR">קוריאנית (한국어)</option>
+            <option value="German" data-code="de-DE">גרמנית (Deutsch)</option>
+            <option value="Italian" data-code="it-IT">איטלקית (Italiano)</option>
+            <option value="Portuguese" data-code="pt-PT">פורטוגזית (Português)</option>
+            <option value="Hindi" data-code="hi-IN">הינדי (हिन्दी)</option>
         </select>
+
     </div>
 
     <div class="zone" id="zone1" onmousedown="start(1)" onmouseup="stop(1)" ontouchstart="start(1)" ontouchend="stop(1)">
-        <div class="status" id="status1">לחץ והחזק</div>
+        <div class="status" id="status1">עברית (Hebrew)</div>
         <div class="result" id="result1"></div>
     </div>
 
     <div class="zone" id="zone2" onmousedown="start(2)" onmouseup="stop(2)" ontouchstart="start(2)" ontouchend="stop(2)">
-        <div class="status" id="status2">Press & Hold</div>
+        <div class="status" id="status2">אנגלית (English)</div>
         <div class="result" id="result2"></div>
     </div>
 </div>
 
 <script>
-    const API_KEY = "AIzaSyB5adZI8TRuXf1e_afg43APpuKf7ENsk54";
-
-    // מודל Gemini 2.5 Flash
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+    const API_KEY = "AIzaSyAkIt20x2A_cqLf0R19rkRiJn1IKsYfjnw";
+    const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
 
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     let isActive = false;
+
+    let lastCall = 0;
+    const MIN_DELAY = 1200;
+
+    function updateButtons() {
+        const lang1Text = document.getElementById("lang1").selectedOptions[0].text;
+        const lang2Text = document.getElementById("lang2").selectedOptions[0].text;
+
+        document.getElementById("status1").innerText = lang1Text;
+        document.getElementById("status2").innerText = lang2Text;
+    }
+
+    updateButtons();
 
     function start(z) {
         if (isActive) return;
@@ -79,27 +106,27 @@
     }
 
     async function translate(text, z) {
+        const now = Date.now();
+        if (now - lastCall < MIN_DELAY) return;
+        lastCall = now;
+
         const targetId = (z === 1) ? 'result2' : 'result1';
 
-        const from = (z === 1) ? document.getElementById('lang1').value : document.getElementById('lang2').value;
-        const to   = (z === 1) ? document.getElementById('lang2').value : document.getElementById('lang1').value;
+        const fromLang = document.getElementById(z === 1 ? 'lang1' : 'lang2').value;
+        const toLang   = document.getElementById(z === 1 ? 'lang2' : 'lang1').value;
 
-        const tCode = document.getElementById(z === 1 ? 'lang2' : 'lang1').selectedOptions[0].dataset.code;
+        const tCode = document.getElementById(z === 1 ? 'lang2' : 'lang1')
+                        .selectedOptions[0].dataset.code;
 
-const prompt = `
-You are a professional human translator.
-Your job is to translate meaning, tone, and intent — never words.
-Translate the following text from ${from} to ${to}.
+        const prompt = `
+You are a professional translator.
+Translate from ${fromLang} to ${toLang}.
+Translate meaning, tone, and intent — not words.
+Use natural, native phrasing.
+Output only the translation.
 
-Rules:
-- Do NOT translate literally.
-- Translate idioms, slang, and figurative expressions into their natural equivalent.
-- If the source text uses a metaphor, replace it with the closest natural expression in the target language.
-- Output only the final translation, nothing else.
-
-Text: "${text}"
-`;
-
+${text}
+        `;
 
         try {
             const response = await fetch(API_URL, {
@@ -121,7 +148,6 @@ Text: "${text}"
                 window.speechSynthesis.speak(speech);
             } else {
                 document.getElementById(targetId).innerText = "API Error";
-                console.log(data);
             }
         } catch (err) {
             document.getElementById(targetId).innerText = "Network Error";
@@ -131,3 +157,4 @@ Text: "${text}"
 
 </body>
 </html>
+
