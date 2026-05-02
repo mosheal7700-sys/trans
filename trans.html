@@ -3,22 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>מתרגם קולי דו-כיווני</title>
+    <title>מתרגם קולי צבעוני</title>
     <style>
         :root {
-            --primary-color: #4A90E2;
-            --secondary-color: #50E3C2;
-            --bg-color: #f4f7f6;
-            --text-color: #333;
+            --zone1-color: #4A90E2; /* כחול */
+            --zone2-color: #F5A623; /* כתום/צהוב */
+            --bg-light: #ffffff;
         }
 
         body, html {
             margin: 0;
             padding: 0;
             height: 100%;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             overflow: hidden;
-            background-color: var(--bg-color);
         }
 
         .container {
@@ -30,9 +28,10 @@
         /* שורה עליונה - בחירת שפות */
         .top-bar {
             display: flex;
-            height: 15%;
-            background: #fff;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            height: 12%;
+            background: #2c3e50;
+            padding: 5px;
+            gap: 5px;
             z-index: 10;
         }
 
@@ -41,17 +40,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 10px;
-            border-left: 1px solid #eee;
         }
 
         select {
-            width: 90%;
+            width: 95%;
             padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
+            border-radius: 12px;
+            border: none;
             font-size: 1rem;
-            outline: none;
+            background: #ecf0f1;
+            font-weight: bold;
         }
 
         /* אזורי הלחיצה */
@@ -67,39 +65,52 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            position: relative;
-            transition: background-color 0.3s;
-            -webkit-user-select: none; /* מניעת בחירת טקסט בנייד */
+            color: white;
+            transition: opacity 0.2s, transform 0.1s;
+            -webkit-user-select: none;
             user-select: none;
             cursor: pointer;
+            text-shadow: 0px 1px 3px rgba(0,0,0,0.3);
         }
 
-        #zone1 { background-color: #ffffff; border-bottom: 2px solid #eee; }
-        #zone2 { background-color: #f9f9f9; }
+        #zone1 { background-color: var(--zone1-color); }
+        #zone2 { background-color: var(--zone2-color); }
 
         /* אפקט בזמן לחיצה */
-        .translate-zone.active {
-            background-color: #e1f5fe !important;
+        .translate-zone:active {
+            opacity: 0.8;
+            transform: scale(0.98);
+        }
+
+        .lang-display-label {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
         }
 
         .status-text {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: var(--text-color);
-            margin-bottom: 10px;
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 5px;
         }
 
         .result-text {
-            font-size: 1rem;
-            color: #666;
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.9);
             text-align: center;
-            padding: 0 20px;
-            min-height: 1.2em;
+            padding: 0 30px;
+            margin-top: 10px;
+            max-height: 3.6em;
+            overflow: hidden;
         }
 
         .mic-icon {
-            font-size: 2rem;
-            margin-bottom: 10px;
+            font-size: 2.5rem;
+            margin-bottom: 5px;
         }
 
     </style>
@@ -109,42 +120,49 @@
 <div class="container">
     <div class="top-bar">
         <div class="lang-select-box">
-            <select id="lang1">
+            <select id="lang1" onchange="updateLabels()">
                 <option value="he-IL" selected>עברית</option>
                 <option value="en-US">אנגלית</option>
                 <option value="es-ES">ספרדית</option>
                 <option value="fr-FR">צרפתית</option>
                 <option value="ru-RU">רוסית</option>
+                <option value="ar-SA">ערבית</option>
             </select>
         </div>
         <div class="lang-select-box">
-            <select id="lang2">
+            <select id="lang2" onchange="updateLabels()">
                 <option value="en-US" selected>אנגלית</option>
                 <option value="he-IL">עברית</option>
                 <option value="es-ES">ספרדית</option>
                 <option value="fr-FR">צרפתית</option>
                 <option value="ru-RU">רוסית</option>
+                <option value="ar-SA">ערבית</option>
             </select>
         </div>
     </div>
 
     <div class="main-content">
-        <div id="zone1" class="translate-zone" onmousedown="startRecording(1)" onmouseup="stopRecording(1)" ontouchstart="startRecording(1)" ontouchend="stopRecording(1)">
-            <div class="mic-icon">🎙️</div>
-            <div class="status-text" id="status1">לחץ והחזק לדבר</div>
-            <div class="result-text" id="result1"></div>
+        <div id="zone1" class="translate-zone" 
+             onmousedown="startRecording(1)" onmouseup="stopRecording(1)" 
+             ontouchstart="startRecording(1)" ontouchend="stopRecording(1)">
+            <div class="lang-display-label" id="label1">עברית</div>
+            <div class="mic-icon">🎤</div>
+            <div class="status-text" id="status1">לחץ להקלטה</div>
+            <div class="result-text" id="result1">...</div>
         </div>
 
-        <div id="zone2" class="translate-zone" onmousedown="startRecording(2)" onmouseup="stopRecording(2)" ontouchstart="startRecording(2)" ontouchend="stopRecording(2)">
-            <div class="mic-icon">🎙️</div>
-            <div class="status-text" id="status2">לחץ והחזק לדבר</div>
-            <div class="result-text" id="result2"></div>
+        <div id="zone2" class="translate-zone" 
+             onmousedown="startRecording(2)" onmouseup="stopRecording(2)" 
+             ontouchstart="startRecording(2)" ontouchend="stopRecording(2)">
+            <div class="lang-display-label" id="label2">אנגלית</div>
+            <div class="mic-icon">🎤</div>
+            <div class="status-text" id="status2">לחץ להקלטה</div>
+            <div class="result-text" id="result2">...</div>
         </div>
     </div>
 </div>
 
 <script>
-    // הגדרות זיהוי דיבור
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     let isRecording = false;
@@ -153,11 +171,17 @@
         recognition = new SpeechRecognition();
         recognition.continuous = false;
         recognition.interimResults = false;
-    } else {
-        alert("הדפדפן שלך לא תומך בזיהוי קולי. נסה להשתמש בכרום.");
     }
 
-    // פונקציה לתחילת הקלטה
+    // עדכון תוויות השפה המוצגות בכפתורים
+    function updateLabels() {
+        const s1 = document.getElementById('lang1');
+        const s2 = document.getElementById('lang2');
+        
+        document.getElementById('label1').innerText = s1.options[s1.selectedIndex].text;
+        document.getElementById('label2').innerText = s2.options[s2.selectedIndex].text;
+    }
+
     function startRecording(zoneNum) {
         if (isRecording || !recognition) return;
         isRecording = true;
@@ -165,9 +189,7 @@
         const langSource = document.getElementById(zoneNum === 1 ? 'lang1' : 'lang2').value;
         recognition.lang = langSource;
 
-        document.getElementById(`zone${zoneNum}`).classList.add('active');
         document.getElementById(`status${zoneNum}`).innerText = "מקשיב...";
-        
         recognition.start();
 
         recognition.onresult = (event) => {
@@ -176,24 +198,16 @@
             processTranslation(transcript, zoneNum);
         };
 
-        recognition.onerror = (event) => {
-            console.error("שגיאת זיהוי:", event.error);
-            stopRecording(zoneNum);
-        };
+        recognition.onerror = () => stopRecording(zoneNum);
     }
 
-    // פונקציה לסיום הקלטה
     function stopRecording(zoneNum) {
         if (!isRecording) return;
         isRecording = false;
-        
-        document.getElementById(`zone${zoneNum}`).classList.remove('active');
-        document.getElementById(`status${zoneNum}`).innerText = "לחץ והחזק לדבר";
-        
-        setTimeout(() => recognition.stop(), 500); // השהייה קלה לסיום קליטת משפט
+        document.getElementById(`status${zoneNum}`).innerText = "לחץ להקלטה";
+        setTimeout(() => recognition.stop(), 400);
     }
 
-    // לוגיקת התרגום והדיבור
     async function processTranslation(text, fromZone) {
         const lang1 = document.getElementById('lang1').value;
         const lang2 = document.getElementById('lang2').value;
@@ -203,27 +217,26 @@
         const targetResultId = (fromZone === 1) ? 'result2' : 'result1';
 
         try {
-            // שימוש ב-API חינמי לצורך ההדגמה (MyMemory)
-            const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang.split('-')[0]}|${targetLang.split('-')[0]}`);
-            const data = await response.json();
+            // תרגום באמצעות MyMemory API
+            const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang.split('-')[0]}|${targetLang.split('-')[0]}`);
+            const data = await res.json();
             const translatedText = data.responseData.translatedText;
 
-            // הצגת התרגום באיזור הנגדי
             document.getElementById(targetResultId).innerText = translatedText;
-
-            // הקראת התרגום
             speak(translatedText, targetLang);
-        } catch (error) {
-            console.error("שגיאה בתרגום:", error);
+        } catch (e) {
+            console.error("Translation error", e);
         }
     }
 
-    // פונקציית הקראת טקסט (TTS)
     function speak(text, langCode) {
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = langCode;
         window.speechSynthesis.speak(utterance);
     }
+
+    // הפעלה ראשונית של התוויות
+    updateLabels();
 </script>
 
 </body>
