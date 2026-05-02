@@ -3,35 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Gemini Translator</title>
+    <title>Gemini Translator</title>
     <style>
-        :root {
-            --zone1-color: #1a73e8; /* כחול גוגל */
-            --zone2-color: #34a853; /* ירוק גוגל */
-        }
-        body, html { margin: 0; padding: 0; height: 100%; font-family: system-ui, sans-serif; overflow: hidden; background: #000; }
+        :root { --blue: #1a73e8; --green: #34a853; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; background: #000; color: white; overflow: hidden; }
         .container { display: flex; flex-direction: column; height: 100vh; }
-        
-        .top-bar { display: flex; height: 12%; background: #202124; padding: 5px; gap: 8px; z-index: 10; }
-        .lang-select-box { flex: 1; display: flex; align-items: center; justify-content: center; }
-        select { width: 95%; padding: 12px; border-radius: 10px; border: 1px solid #5f6368; font-size: 1rem; background: #3c4043; color: white; font-weight: bold; }
-
-        .main-content { flex: 1; display: flex; flex-direction: column; }
-        .translate-zone { 
-            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            color: white; transition: all 0.2s; -webkit-user-select: none; user-select: none; cursor: pointer; text-align: center;
-        }
-        #zone1 { background-color: var(--zone1-color); }
-        #zone2 { background-color: var(--zone2-color); }
-        .translate-zone:active { filter: brightness(1.2); transform: scale(0.99); }
-
-        .lang-display-label { font-size: 0.8rem; background: rgba(0,0,0,0.3); padding: 5px 15px; border-radius: 20px; margin-bottom: 10px; text-transform: uppercase; }
-        .status-text { font-size: 1.4rem; font-weight: bold; }
-        .result-text { font-size: 1.1rem; padding: 10px 25px; opacity: 0.9; min-height: 1.5em; direction: auto; }
-        .mic-icon { font-size: 2.2rem; margin-bottom: 5px; }
-        
-        /* אנימציית "מקשיב" */
-        .recording { animation: pulse 1.5s infinite; }
+        .top-bar { height: 12%; background: #202124; display: flex; align-items: center; justify-content: space-around; padding: 0 10px; }
+        select { background: #3c4043; color: white; border: 1px solid #5f6368; padding: 10px; border-radius: 8px; width: 45%; font-weight: bold; }
+        .zone { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.2s; cursor: pointer; user-select: none; }
+        #zone1 { background: var(--blue); }
+        #zone2 { background: var(--green); }
+        .zone:active { filter: brightness(1.2); }
+        .status { font-size: 1.5rem; font-weight: bold; margin-bottom: 10px; }
+        .result { font-size: 1.2rem; padding: 0 20px; text-align: center; min-height: 1.5em; opacity: 0.9; }
+        .recording { animation: pulse 1s infinite; color: #ff5252; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
@@ -39,127 +24,91 @@
 
 <div class="container">
     <div class="top-bar">
-        <div class="lang-select-box">
-            <select id="lang1" onchange="updateLabels()">
-                <option value="Hebrew" data-code="he-IL" selected>עברית</option>
-                <option value="English" data-code="en-US">English</option>
-                <option value="Spanish" data-code="es-ES">Spanish</option>
-                <option value="Arabic" data-code="ar-SA">Arabic</option>
-            </select>
-        </div>
-        <div class="lang-select-box">
-            <select id="lang2" onchange="updateLabels()">
-                <option value="English" data-code="en-US" selected>English</option>
-                <option value="Hebrew" data-code="he-IL">עברית</option>
-                <option value="Russian" data-code="ru-RU">Russian</option>
-                <option value="French" data-code="fr-FR">French</option>
-            </select>
-        </div>
+        <select id="lang1">
+            <option value="Hebrew" data-code="he-IL" selected>עברית</option>
+            <option value="English" data-code="en-US">English</option>
+        </select>
+        <select id="lang2">
+            <option value="English" data-code="en-US" selected>English</option>
+            <option value="Hebrew" data-code="he-IL">עברית</option>
+        </select>
     </div>
 
-    <div class="main-content">
-        <div id="zone1" class="translate-zone" onmousedown="startRecording(1)" onmouseup="stopRecording(1)" ontouchstart="startRecording(1)" ontouchend="stopRecording(1)">
-            <div class="lang-display-label" id="label1">HEBREW</div>
-            <div class="mic-icon" id="icon1">🎙️</div>
-            <div class="status-text" id="status1">לחץ והחזק</div>
-            <div class="result-text" id="result1">המתן לדיבור...</div>
-        </div>
+    <div class="zone" id="zone1" onmousedown="start(1)" onmouseup="stop(1)" ontouchstart="start(1)" ontouchend="stop(1)">
+        <div class="status" id="status1">לחץ והחזק</div>
+        <div class="result" id="result1"></div>
+    </div>
 
-        <div id="zone2" class="translate-zone" onmousedown="startRecording(2)" onmouseup="stopRecording(2)" ontouchstart="startRecording(2)" ontouchend="stopRecording(2)">
-            <div class="lang-display-label" id="label2">ENGLISH</div>
-            <div class="mic-icon" id="icon2">🎙️</div>
-            <div class="status-text" id="status2">Press & Hold</div>
-            <div class="result-text" id="result2">Waiting...</div>
-        </div>
+    <div class="zone" id="zone2" onmousedown="start(2)" onmouseup="stop(2)" ontouchstart="start(2)" ontouchend="stop(2)">
+        <div class="status" id="status2">Press & Hold</div>
+        <div class="result" id="result2"></div>
     </div>
 </div>
-
 <script>
-    // --- הגדרות Gemini ---
-    const GEMINI_API_KEY = "AIzaSyBJrBdvjSNlllFsVDS7UnDmPaSYqxXGvdk"; // הכנס כאן את המפתח שלך
-    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const API_KEY = "AIzaSyBqFLlX7y-T4KZsQqn4nr8pmWyFIT7iiRc"; 
+    
+    // שימוש במודל Gemini 2.5 Flash
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition = SpeechRecognition ? new SpeechRecognition() : null;
-    let isRecording = false;
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    let isActive = false;
 
-    function updateLabels() {
-        document.getElementById('label1').innerText = document.getElementById('lang1').value;
-        document.getElementById('label2').innerText = document.getElementById('lang2').value;
-    }
-
-    function startRecording(zoneNum) {
-        if (isRecording || !recognition) return;
-        isRecording = true;
-
-        const select = document.getElementById(`lang${zoneNum}`);
-        const langCode = select.options[select.selectedIndex].getAttribute('data-code');
-        
-        recognition.lang = langCode;
-        document.getElementById(`status${zoneNum}`).innerText = "...";
-        document.getElementById(`icon${zoneNum}`).classList.add('recording');
-        
+    function start(z) {
+        if (isActive) return;
+        isActive = true;
+        const sel = document.getElementById(`lang${z}`);
+        recognition.lang = sel.options[sel.selectedIndex].dataset.code;
+        document.getElementById(`status${z}`).classList.add('recording');
         recognition.start();
 
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            document.getElementById(`result${zoneNum}`).innerText = transcript;
-            translateWithGemini(transcript, zoneNum);
+        recognition.onresult = (e) => {
+            const text = e.results[0][0].transcript;
+            document.getElementById(`result${z}`).innerText = text;
+            translate(text, z);
         };
     }
 
-    function stopRecording(zoneNum) {
-        if (!isRecording) return;
-        isRecording = false;
-        document.getElementById(`status${zoneNum}`).innerText = "מעבד...";
-        document.getElementById(`icon${zoneNum}`).classList.remove('recording');
-        setTimeout(() => {
-            recognition.stop();
-            document.getElementById(`status${zoneNum}`).innerText = "לחץ והחזק";
-        }, 500);
+    function stop(z) {
+        if (!isActive) return;
+        isActive = false;
+        document.getElementById(`status${z}`).classList.remove('recording');
+        setTimeout(() => recognition.stop(), 500);
     }
 
-    async function translateWithGemini(text, fromZone) {
-        const lang1Name = document.getElementById('lang1').value;
-        const lang2Name = document.getElementById('lang2').value;
-
-        const sourceLang = (fromZone === 1) ? lang1Name : lang2Name;
-        const targetLang = (fromZone === 1) ? lang2Name : lang1Name;
-        const targetResultId = (fromZone === 1) ? 'result2' : 'result1';
-        const targetLangCode = document.getElementById(fromZone === 1 ? 'lang2' : 'lang1').options[document.getElementById(fromZone === 1 ? 'lang2' : 'lang1').selectedIndex].getAttribute('data-code');
-
-        // Prompt הנדסי לג'מיני - מבקשים ממנו להיות מתרגם נטו
-        const prompt = `Translate the following text from ${sourceLang} to ${targetLang}. 
-                        Output only the translated text, no explanations, no quotes.
-                        Text: "${text}"`;
+    async function translate(text, z) {
+        const targetId = (z === 1) ? 'result2' : 'result1';
+        const sourceL = document.getElementById('lang1').value;
+        const targetL = document.getElementById('lang2').value;
+        const from = (z === 1) ? sourceL : targetL;
+        const to = (z === 1) ? targetL : sourceL;
+        const tCode = document.getElementById(z === 1 ? 'lang2' : 'lang1').selectedOptions[0].dataset.code;
 
         try {
-            const response = await fetch(GEMINI_URL, {
+            const response = await fetch(API_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }]
+                    contents: [{ parts: [{ text: `Translate from ${from} to ${to}: "${text}". Only the translation.` }] }]
                 })
             });
 
             const data = await response.json();
-            const translatedText = data.candidates[0].content.parts[0].text.trim();
-
-            document.getElementById(targetResultId).innerText = translatedText;
-            speak(translatedText, targetLangCode);
-        } catch (error) {
-            console.error("Gemini Error:", error);
-            document.getElementById(targetResultId).innerText = "שגיאת תרגום";
+            
+            if (data.candidates && data.candidates[0].content) {
+                const output = data.candidates[0].content.parts[0].text.trim();
+                document.getElementById(targetId).innerText = output;
+                
+                const speech = new SpeechSynthesisUtterance(output);
+                speech.lang = tCode;
+                window.speechSynthesis.speak(speech);
+            } else {
+                document.getElementById(targetId).innerText = "API Error: " + (data.error?.message || "Check Console");
+                console.log(data);
+            }
+        } catch (err) {
+            document.getElementById(targetId).innerText = "Network Error";
         }
     }
-
-    function speak(text, langCode) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = langCode;
-        window.speechSynthesis.speak(utterance);
-    }
-
-    updateLabels();
 </script>
 
 </body>
