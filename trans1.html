@@ -86,13 +86,20 @@
 
         const tCode = document.getElementById(z === 1 ? 'lang2' : 'lang1').selectedOptions[0].dataset.code;
 
-        const prompt = `
+const prompt = `
+You are a professional human translator.
+Your job is to translate meaning, tone, and intent — never words.
 Translate the following text from ${from} to ${to}.
-Provide a natural, idiomatic translation that reflects the intended meaning, not a literal translation.
-If the text contains slang, idioms, or figurative expressions, translate them to their closest natural equivalent.
+
+Rules:
+- Do NOT translate literally.
+- Translate idioms, slang, and figurative expressions into their natural equivalent.
+- If the source text uses a metaphor, replace it with the closest natural expression in the target language.
+- Output only the final translation, nothing else.
+
 Text: "${text}"
-Only output the translation itself.
-        `;
+`;
+
 
         try {
             const response = await fetch(API_URL, {
