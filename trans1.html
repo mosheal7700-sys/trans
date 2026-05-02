@@ -44,10 +44,11 @@
         <div class="result" id="result2"></div>
     </div>
 </div>
+
 <script>
-    const API_KEY = "AIzaSyBqFLlX7y-T4KZsQqn4nr8pmWyFIT7iiRc"; 
-    
-    // שימוש במודל Gemini 2.5 Flash
+    const API_KEY = "AIzaSyBqFLlX7y-T4KZsQqn4nr8pmWyFIT7iiRc";
+
+    // מודל Gemini 2.5 Flash
     const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
 
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -56,8 +57,10 @@
     function start(z) {
         if (isActive) return;
         isActive = true;
+
         const sel = document.getElementById(`lang${z}`);
         recognition.lang = sel.options[sel.selectedIndex].dataset.code;
+
         document.getElementById(`status${z}`).classList.add('recording');
         recognition.start();
 
@@ -72,37 +75,45 @@
         if (!isActive) return;
         isActive = false;
         document.getElementById(`status${z}`).classList.remove('recording');
-        setTimeout(() => recognition.stop(), 500);
+        setTimeout(() => recognition.stop(), 300);
     }
 
     async function translate(text, z) {
         const targetId = (z === 1) ? 'result2' : 'result1';
-        const sourceL = document.getElementById('lang1').value;
-        const targetL = document.getElementById('lang2').value;
-        const from = (z === 1) ? sourceL : targetL;
-        const to = (z === 1) ? targetL : sourceL;
+
+        const from = (z === 1) ? document.getElementById('lang1').value : document.getElementById('lang2').value;
+        const to   = (z === 1) ? document.getElementById('lang2').value : document.getElementById('lang1').value;
+
         const tCode = document.getElementById(z === 1 ? 'lang2' : 'lang1').selectedOptions[0].dataset.code;
+
+        const prompt = `
+Translate the following text from ${from} to ${to}.
+Provide a natural, idiomatic translation that reflects the intended meaning, not a literal translation.
+If the text contains slang, idioms, or figurative expressions, translate them to their closest natural equivalent.
+Text: "${text}"
+Only output the translation itself.
+        `;
 
         try {
             const response = await fetch(API_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: `Translate from ${from} to ${to}: "${text}". Only the translation.` }] }]
+                    contents: [{ parts: [{ text: prompt }] }]
                 })
             });
 
             const data = await response.json();
-            
+
             if (data.candidates && data.candidates[0].content) {
                 const output = data.candidates[0].content.parts[0].text.trim();
                 document.getElementById(targetId).innerText = output;
-                
+
                 const speech = new SpeechSynthesisUtterance(output);
                 speech.lang = tCode;
                 window.speechSynthesis.speak(speech);
             } else {
-                document.getElementById(targetId).innerText = "API Error: " + (data.error?.message || "Check Console");
+                document.getElementById(targetId).innerText = "API Error";
                 console.log(data);
             }
         } catch (err) {
@@ -113,3 +124,4 @@
 
 </body>
 </html>
+
