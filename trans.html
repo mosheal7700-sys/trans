@@ -872,8 +872,8 @@ function escapeHtml(str){
 
 function shareEntry(entry){
   if(!entry) return;
-  const msg = `${entry.sourceLangName}: ${entry.sourceText}\n${entry.targetLangName}: ${entry.targetText}`;
-  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  // Share only the translated text (target language) — not the source text.
+  window.open(`https://wa.me/?text=${encodeURIComponent(entry.targetText)}`, '_blank');
 }
 
 els.shareLatest.addEventListener('click', ()=> shareEntry(state.latest));
