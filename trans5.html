@@ -533,23 +533,19 @@ function startRecording(side){
     console.error("Speech error", e);
   };
 
+  // מניעת הפעלה מחדש אוטומטית שגורמת לכפולות; במקום זאת, אם ההקלטה נפסקה לבד, נסיים ונשלח לתרגום
   recognition.onend = () => {
     if(state.isRecording && state.activeSide === side){
-      try { recognition.start(); } catch(err){}
+      stopRecording(side);
     }
   };
 
   try {
     recognition.start();
   } catch(e) {
-    try {
-      recognition.stop();
-      setTimeout(() => recognition.start(), 50);
-    } catch(err) {
-      state.isRecording = false;
-      micEl.classList.remove('recording');
-      setStatus('שגיאה בהפעלת מיקרופון', true);
-    }
+    state.isRecording = false;
+    micEl.classList.remove('recording');
+    setStatus('שגיאה בהפעלת מיקרופון', true);
   }
 }
 
