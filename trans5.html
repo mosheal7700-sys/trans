@@ -64,6 +64,12 @@
   @media (max-width:620px){
     .panels{grid-template-columns:1fr;}
     .divider{flex-direction:row;padding:6px 0;}
+    .panel{padding:14px 14px 16px; gap:10px;}
+    .mic-btn{width:72px;height:72px;}
+    .mic-btn svg{width:26px;height:26px;}
+    .mic-btn.recording.side-a{box-shadow:0 0 0 4px rgba(227,168,87,.35);}
+    .mic-btn.recording.side-b{box-shadow:0 0 0 4px rgba(79,182,196,.35);}
+    .transcript{max-height:88px; overflow-y:auto;}
   }
 
   .panel{
@@ -142,6 +148,8 @@
     border-radius:14px;
     padding:12px 14px;
     min-height:52px;
+    max-height:160px;
+    overflow-y:auto;
     font-size:15px;
     line-height:1.5;
     color:var(--ink);
@@ -230,61 +238,6 @@
   .wa-btn:disabled{opacity:.35; cursor:not-allowed;}
   .wa-btn svg{width:17px;height:17px;fill:#062A19;}
 
-  .history{margin-top:34px;}
-  .history-title{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12px;
-    letter-spacing:.14em;
-    text-transform:uppercase;
-    color:var(--muted);
-    margin-bottom:12px;
-    display:flex;align-items:center;gap:10px;
-  }
-  .history-title::after{content:"";flex:1;height:1px;background:var(--hair);}
-
-  .history-empty{
-    color:var(--muted); font-size:13px; text-align:center;
-    padding:26px 10px; border:1px dashed var(--hair); border-radius:14px;
-  }
-
-  .h-item{
-    background:var(--panel);
-    border:1px solid var(--hair);
-    border-radius:16px;
-    padding:14px 16px;
-    margin-bottom:10px;
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-  }
-  .h-row{display:flex;align-items:flex-start;gap:10px;}
-  .h-tag{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:10px;
-    padding:3px 8px;
-    border-radius:6px;
-    white-space:nowrap;
-    margin-top:2px;
-  }
-  .h-tag.a{background:var(--gold-dim); color:var(--gold);}
-  .h-tag.b{background:var(--cyan-dim); color:var(--cyan);}
-  .h-text{font-size:14px; line-height:1.5;}
-  .h-text.muted{color:var(--muted);}
-  .h-footer{display:flex;justify-content:flex-end;margin-top:2px;}
-  .h-share{
-    display:flex;align-items:center;gap:6px;
-    background:transparent;
-    border:1px solid var(--hair);
-    color:var(--muted);
-    font-family:inherit;
-    font-size:11px;
-    padding:5px 10px;
-    border-radius:999px;
-    cursor:pointer;
-    transition:border-color .15s ease, color .15s ease;
-  }
-  .h-share:hover{border-color:var(--whatsapp); color:var(--whatsapp);}
-  .h-share svg{width:12px;height:12px;fill:currentColor;}
 </style>
 </head>
 <body>
@@ -361,11 +314,6 @@
     </button>
   </div>
 
-  <div class="history">
-    <div class="history-title">היסטוריית שיחה</div>
-    <div id="historyList"><div class="history-empty">עדיין אין תרגומים — התחילו לדבר כדי לראות אותם כאן</div></div>
-  </div>
-
 </div>
 
 <script>
@@ -391,7 +339,12 @@ const state = {
   langB: 'en-US',
   isRecording: false,
   activeSide: null,
-  history: [],
+  // Not shown in the UI — a small rolling buffer of recent exchanges kept
+  // only so the translation model has conversational context (pronouns,
+  // topic continuity). Capped at a few entries; never rendered.
+  contextBuffer: [],
+  // The single most recent translation — this is what the share button
+  // sends. Each new translation replaces it; we don't keep a visible list.
   latest: null,
   finalTranscript: '',
   interimTranscript: '',
@@ -411,7 +364,6 @@ const els = {
   liveB: document.getElementById('liveB'),
   status: document.getElementById('status'),
   shareLatest: document.getElementById('shareLatest'),
-  historyList: document.getElementById('historyList'),
   apikeyHead: document.getElementById('apikeyHead'),
   apikeyChevron: document.getElementById('apikeyChevron'),
   apikeyBody: document.getElementById('apikeyBody'),
@@ -693,7 +645,7 @@ async function translateAndSpeak(sourceText, side){
   const fromName = langName(fromCode);
   const toName = langName(toCode);
 
-  const contextLines = state.history.slice(-6).map(h=>
+  const contextLines = state.contextBuffer.slice(-6).map(h=>
     `${h.sourceLangName}: ${h.sourceText}\n${h.targetLangName}: ${h.targetText}`
   ).join('\n---\n');
 
@@ -760,9 +712,12 @@ async function translateAndSpeak(sourceText, side){
       sourceText, sourceLangName: fromName,
       targetText: translated, targetLangName: toName,
     };
-    state.history.push(entry);
+    // Keep a small rolling context buffer (invisible, for translation
+    // quality only) and separately track just the single latest
+    // translation for sharing — no visible/growing history list.
+    state.contextBuffer.push(entry);
+    if(state.contextBuffer.length > 6) state.contextBuffer.shift();
     state.latest = entry;
-    renderHistory();
     els.shareLatest.disabled = false;
 
     setStatus('מוכן להקשבה');
@@ -780,44 +735,6 @@ function speak(text, langCode){
   const utter = new SpeechSynthesisUtterance(text);
   utter.lang = langCode;
   window.speechSynthesis.speak(utter);
-}
-
-function renderHistory(){
-  if(state.history.length === 0){
-    els.historyList.innerHTML = '<div class="history-empty">עדיין אין תרגומים — התחילו לדבר כדי לראות אותם כאן</div>';
-    return;
-  }
-  els.historyList.innerHTML = '';
-  [...state.history].reverse().forEach((h, idx)=>{
-    const item = document.createElement('div');
-    item.className = 'h-item';
-    item.innerHTML = `
-      <div class="h-row">
-        <span class="h-tag ${h.side}">${h.sourceLangName}</span>
-        <span class="h-text">${escapeHtml(h.sourceText)}</span>
-      </div>
-      <div class="h-row">
-        <span class="h-tag ${h.side==='a'?'b':'a'}">${h.targetLangName}</span>
-        <span class="h-text muted">${escapeHtml(h.targetText)}</span>
-      </div>
-      <div class="h-footer">
-        <button class="h-share" data-idx="${state.history.length-1-idx}">שתף בוואטסאפ</button>
-      </div>
-    `;
-    els.historyList.appendChild(item);
-  });
-  els.historyList.querySelectorAll('.h-share').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const idx = parseInt(btn.getAttribute('data-idx'), 10);
-      shareEntry(state.history[idx]);
-    });
-  });
-}
-
-function escapeHtml(str){
-  const d = document.createElement('div');
-  d.textContent = str;
-  return d.innerHTML;
 }
 
 function shareEntry(entry){
@@ -868,4 +785,5 @@ if(!SpeechRecognitionAPI){
 </script>
 </body>
 </html>
+
 
