@@ -520,6 +520,10 @@ function startRecording(side){
   rec.interimResults = true;
   state.currentRecognition = rec;
 
+  // Carries over already-finalized text across an auto-restart (see onend
+  // below). Reset per press.
+  let base = '';
+
   rec.onstart = () => {
     setStatus(side === 'a' ? 'מקשיב בשפה א… דברו עכשיו' : 'מקשיב בשפה ב… דברו עכשיו');
   };
@@ -529,16 +533,26 @@ function startRecording(side){
   };
 
   rec.onresult = (event) => {
-    let interim = '';
-    for(let i = event.resultIndex; i < event.results.length; ++i){
+    // IMPORTANT: rebuild the final/interim text from the COMPLETE results
+    // list every time, instead of appending only the segment(s) pointed to
+    // by event.resultIndex. Chrome's Hebrew recognizer sometimes re-emits
+    // a growing partial as "final" more than once, and blindly appending
+    // deltas turns that into runaway duplication ("צריך צריך צריך...").
+    // Rebuilding from scratch each time is immune to that, since we never
+    // accumulate — we just recompute the current true state.
+    let finalPart = '';
+    let interimPart = '';
+    for(let i = 0; i < event.results.length; i++){
+      const transcript = event.results[i][0].transcript;
       if(event.results[i].isFinal){
-        state.finalTranscript += event.results[i][0].transcript + ' ';
+        finalPart += transcript + ' ';
       } else {
-        interim += event.results[i][0].transcript;
+        interimPart += transcript;
       }
     }
-    state.interimTranscript = interim;
-    const combined = (state.finalTranscript + interim).trim();
+    state.finalTranscript = (base + finalPart);
+    state.interimTranscript = interimPart;
+    const combined = (base + finalPart + interimPart).trim();
     liveEl.textContent = combined || 'מקשיב…';
   };
 
@@ -565,7 +579,9 @@ function startRecording(side){
       finalizeRecording(side, micEl, hintEl, liveEl);
     } else if(state.isRecording && state.currentRecognition === rec){
       // Browser auto-stopped (silence timeout) while button still held —
-      // restart so holding the button keeps listening.
+      // carry over what's already finalized, then restart so holding the
+      // button keeps listening.
+      base = state.finalTranscript;
       try{ rec.start(); }catch(err){}
     }
   };
