@@ -501,17 +501,31 @@ function createRecognizer(side, liveEl, hintEl, micEl){
   };
 
   rec.onresult = (event) => {
-    // Rebuild fresh from THIS instance's own results every time (never
-    // append deltas) — combined with always starting a brand-new
-    // recognizer on restart (see onend below), this is immune to
-    // platform differences in whether the browser clears its internal
-    // results list between sessions.
+    // Rebuild fresh from THIS instance's own results every time. Some
+    // Android speech engines emit multiple "final" checkpoints that are
+    // each CUMULATIVE (the whole sentence-so-far, not just the new bit) —
+    // naively concatenating every final segment with += snowballs into
+    // runaway duplication ("זה זה בעצם זה בעצם צפוי..."). To handle this
+    // correctly regardless of which behavior a given browser/device uses,
+    // we merge smartly: if a new final chunk is a longer version of what
+    // we already have, REPLACE (it's cumulative); if it's shorter/already
+    // contained, ignore it (stale); otherwise, it's genuinely new content
+    // so append it.
     let finalPart = '';
     let interimPart = '';
     for(let i = 0; i < event.results.length; i++){
       const transcript = event.results[i][0].transcript;
       if(event.results[i].isFinal){
-        finalPart += transcript + ' ';
+        const t = transcript.trim();
+        const cur = finalPart.trim();
+        if(!t) continue;
+        if(cur === '' || t.startsWith(cur)){
+          finalPart = t + ' ';               // cumulative superset — replace
+        } else if(cur.startsWith(t)){
+          // stale/shorter duplicate of what we already have — ignore
+        } else {
+          finalPart = (cur + ' ' + t).trim() + ' '; // genuinely new content
+        }
       } else {
         interimPart += transcript;
       }
