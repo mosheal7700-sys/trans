@@ -74,15 +74,7 @@
     display:flex;
     flex-direction:column;
     gap:14px;
-    transition:box-shadow .25s ease, border-color .25s ease;
-    cursor:pointer;
-    user-select:none;
-    -webkit-user-select:none;
-    touch-action:manipulation;
   }
-  .panel.active-a{box-shadow:0 0 0 1px var(--gold), 0 12px 30px -8px rgba(227,168,87,.35); border-color:var(--gold);}
-  .panel.active-b{box-shadow:0 0 0 1px var(--cyan), 0 12px 30px -8px rgba(79,182,196,.35); border-color:var(--cyan);}
-  .panel:active{transform:scale(0.98);}
 
   select.lang-select{
     background:var(--panel-2);
@@ -104,12 +96,38 @@
     width:104px;height:104px;
     border-radius:50%;
     border:none;
-    pointer-events:none;
+    cursor:pointer;
     position:relative;
     display:flex;align-items:center;justify-content:center;
+    transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease;
+    touch-action:manipulation;
   }
-  .mic-btn.side-a{background:linear-gradient(160deg,#F0BE7C,var(--gold));}
-  .mic-btn.side-b{background:linear-gradient(160deg,#8CDCE6,var(--cyan));}
+  .mic-btn.side-a{background:linear-gradient(160deg,#F0BE7C,var(--gold)); border:3px solid transparent;}
+  .mic-btn.side-b{background:linear-gradient(160deg,#8CDCE6,var(--cyan)); border:3px solid transparent;}
+  
+  .mic-btn.recording.side-a{
+    box-shadow:0 0 0 6px rgba(227,168,87,.35);
+    border-color:#fff;
+    animation: pulseGlowA 1.5s infinite;
+  }
+  .mic-btn.recording.side-b{
+    box-shadow:0 0 0 6px rgba(79,182,196,.35);
+    border-color:#fff;
+    animation: pulseGlowB 1.5s infinite;
+  }
+
+  @keyframes pulseGlowA {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+    100% { transform: scale(1); }
+  }
+  @keyframes pulseGlowB {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+    100% { transform: scale(1); }
+  }
+
+  .mic-btn:active{transform:scale(0.95);}
   .mic-btn svg{width:38px;height:38px;}
   .mic-btn.side-a svg{stroke:#241705;}
   .mic-btn.side-b svg{stroke:#052326;}
@@ -125,6 +143,8 @@
     font-size:15px;
     line-height:1.5;
     color:var(--ink);
+    user-select:text;
+    -webkit-user-select:text;
   }
   .transcript.empty{color:var(--muted); font-style:italic; font-size:13px;}
   .transcript.result-a{border-color:var(--gold-dim);}
@@ -270,22 +290,22 @@
   <div class="head">
     <div class="eyebrow">תרגום דו־כיווני · בזמן אמת</div>
     <h1>מתרגם קולי חכם</h1>
-    <div class="sub">לחצו והחזיקו על אחד האזורים כדי לדבר — התרגום החכם יופיע ויושמע בצד השני</div>
+    <div class="sub">לחצו על כפתור המיקרופון פעם אחת כדי להתחיל לדבר, ולחיצה נוספת לסיום</div>
   </div>
 
   <div class="panels">
-    <div class="panel" id="panelA">
-      <select class="lang-select" id="selectA" onclick="event.stopPropagation()"></select>
+    <div class="panel">
+      <select class="lang-select" id="selectA"></select>
       <div class="mic-wrap">
-        <div class="mic-btn side-a">
+        <button class="mic-btn side-a" id="micA" aria-label="הקלט שפה א">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/>
             <path d="M19 11a7 7 0 0 1-14 0"/>
             <path d="M12 18v3"/>
           </svg>
-        </div>
+        </button>
       </div>
-      <div class="hint" id="hintA">לחץ והחזק לדיבור</div>
+      <div class="hint" id="hintA">לחץ להקלטה</div>
       <div class="transcript empty" id="liveA">כאן יופיע מה שנאמר…</div>
     </div>
 
@@ -293,18 +313,18 @@
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M6 8h12M6 16h12" stroke-linecap="round"/></svg>
     </div>
 
-    <div class="panel" id="panelB">
-      <select class="lang-select" id="selectB" onclick="event.stopPropagation()"></select>
+    <div class="panel">
+      <select class="lang-select" id="selectB"></select>
       <div class="mic-wrap">
-        <div class="mic-btn side-b">
+        <button class="mic-btn side-b" id="micB" aria-label="הקלט שפה ב">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/>
             <path d="M19 11a7 7 0 0 1-14 0"/>
             <path d="M12 18v3"/>
           </svg>
-        </div>
+        </button>
       </div>
-      <div class="hint" id="hintB">לחץ והחזק לדיבור</div>
+      <div class="hint" id="hintB">לחץ להקלטה</div>
       <div class="transcript empty" id="liveB">כאן יופיע מה שנאמר…</div>
     </div>
   </div>
@@ -375,8 +395,8 @@ const state = {
 const els = {
   selectA: document.getElementById('selectA'),
   selectB: document.getElementById('selectB'),
-  panelA: document.getElementById('panelA'),
-  panelB: document.getElementById('panelB'),
+  micA: document.getElementById('micA'),
+  micB: document.getElementById('micB'),
   hintA: document.getElementById('hintA'),
   hintB: document.getElementById('hintB'),
   liveA: document.getElementById('liveA'),
@@ -452,12 +472,29 @@ let recognition = null;
 
 if(SpeechRecognition){
   recognition = new SpeechRecognition();
-  recognition.continuous = false;
+  recognition.continuous = true; // מאפשר האזנה רציפה עד ללחיצה לעצירה
   recognition.interimResults = true;
 }
 
+function toggleRecording(side){
+  if(!recognition){
+    setStatus('זיהוי דיבור אינו נתמך בדפדפן זה', true);
+    return;
+  }
+
+  if(state.isRecording){
+    const currentSide = state.activeSide;
+    stopRecording(currentSide);
+    if(currentSide !== side){
+      // אם לחצו על הצד השני, נתחיל להקליט בו מיד
+      setTimeout(() => startRecording(side), 150);
+    }
+  } else {
+    startRecording(side);
+  }
+}
+
 function startRecording(side){
-  if(state.isRecording || !recognition) return;
   state.isRecording = true;
   state.activeSide = side;
   window.speechSynthesis && window.speechSynthesis.cancel();
@@ -467,57 +504,74 @@ function startRecording(side){
 
   const liveEl = side === 'a' ? els.liveA : els.liveB;
   const hintEl = side === 'a' ? els.hintA : els.hintB;
-  const panelEl = side === 'a' ? els.panelA : els.panelB;
+  const micEl = side === 'a' ? els.micA : els.micB;
 
   liveEl.classList.remove('empty');
   liveEl.textContent = "מקשיב...";
-  hintEl.textContent = "שחרר לסיום";
-  panelEl.classList.add(side === 'a' ? 'active-a' : 'active-b');
+  hintEl.textContent = "לחץ שוב לסיום";
+  micEl.classList.add('recording');
   setStatus(side === 'a' ? 'מקשיב בשפה א…' : 'מקשיב בשפה ב…');
 
-  try {
-    recognition.start();
-  } catch(e) {
-    state.isRecording = false;
-    panelEl.classList.remove('active-a', 'active-b');
-    setStatus('שגיאה בהפעלת מיקרופון', true);
-  }
+  let finalTranscript = '';
 
   recognition.onresult = (event) => {
-    let transcript = '';
+    let interim = '';
     for(let i = event.resultIndex; i < event.results.length; i++){
-      transcript += event.results[i][0].transcript;
+      if(event.results[i].isFinal){
+        finalTranscript += event.results[i][0].transcript;
+      } else {
+        interim += event.results[i][0].transcript;
+      }
     }
-    liveEl.textContent = transcript;
+    liveEl.textContent = finalTranscript || interim || "מקשיב...";
   };
 
   recognition.onerror = (e) => {
     console.error("Speech error", e);
-    stopRecording(side);
   };
 
   recognition.onend = () => {
-    if(state.isRecording){
-      stopRecording(side);
+    // אם ההקלטה נעצרה אוטומטית ע"י הדפדפן אבל המשתמש עדיין במצב הקלטה
+    if(state.isRecording && state.activeSide === side){
+      try {
+        recognition.start();
+      } catch(err) {
+        // מתעלמים אם כבר רץ
+      }
     }
   };
+
+  try {
+    recognition.start();
+  } catch(e) {
+    // אם כבר היה פתוח, נאפס וננסה שוב
+    try {
+      recognition.stop();
+      setTimeout(() => recognition.start(), 100);
+    } catch(err) {
+      state.isRecording = false;
+      micEl.classList.remove('recording');
+      setStatus('שגיאה בהפעלת מיקרופון', true);
+    }
+  }
 }
 
 function stopRecording(side){
   if(!state.isRecording) return;
   state.isRecording = false;
+  state.activeSide = null;
 
-  const panelEl = side === 'a' ? els.panelA : els.panelB;
+  const micEl = side === 'a' ? els.micA : els.micB;
   const hintEl = side === 'a' ? els.hintA : els.hintB;
   const liveEl = side === 'a' ? els.liveA : els.liveB;
 
-  panelEl.classList.remove('active-a', 'active-b');
-  hintEl.textContent = "לחץ והחזק לדיבור";
+  micEl.classList.remove('recording');
+  hintEl.textContent = "לחץ להקלטה";
 
   try { recognition.stop(); } catch(e){}
 
   const text = liveEl.textContent.trim();
-  if(!text || text === "מקשיב..."){
+  if(!text || text === "מקשיב..." || text === "כאן יופיע מה שנאמר…"){
     setStatus('לא זוהה דיבור — נסו שוב');
     liveEl.textContent = "כאן יופיע מה שנאמר…";
     liveEl.classList.add('empty');
@@ -555,7 +609,7 @@ async function translateAndSpeak(sourceText, side){
     : `תרגם:\n${sourceText}`;
 
   try{
-    const model = "gemini-3.6-flash"; // מודל יציב ונתמך
+    const model = "gemini-2.5-flash";
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
@@ -659,29 +713,8 @@ function shareEntry(entry){
 
 els.shareLatest.addEventListener('click', ()=> shareEntry(state.latest));
 
-function bindPanel(panel, side){
-  const start = (e) => {
-    if(e.target.tagName === 'SELECT') return;
-    e.preventDefault();
-    startRecording(side);
-  };
-  
-  const end = (e) => {
-    if(e.target.tagName === 'SELECT') return;
-    e.preventDefault();
-    if(state.activeSide === side) {
-      stopRecording(side);
-    }
-  };
-
-  panel.addEventListener('mousedown', start);
-  panel.addEventListener('mouseup', end);
-  panel.addEventListener('touchstart', start, {passive: false});
-  panel.addEventListener('touchend', end, {passive: false});
-}
-
-bindPanel(els.panelA, 'a');
-bindPanel(els.panelB, 'b');
+els.micA.addEventListener('click', () => toggleRecording('a'));
+els.micB.addEventListener('click', () => toggleRecording('b'));
 
 if(!SpeechRecognition){
   setStatus('זיהוי דיבור אינו נתמך בדפדפן זה — מומלץ להשתמש ב־Chrome', true);
