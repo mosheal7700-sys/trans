@@ -75,9 +75,14 @@
     flex-direction:column;
     gap:14px;
     transition:box-shadow .25s ease, border-color .25s ease;
+    cursor:pointer;
+    user-select:none;
+    -webkit-user-select:none;
+    touch-action:manipulation;
   }
   .panel.active-a{box-shadow:0 0 0 1px var(--gold), 0 12px 30px -8px rgba(227,168,87,.35); border-color:var(--gold);}
   .panel.active-b{box-shadow:0 0 0 1px var(--cyan), 0 12px 30px -8px rgba(79,182,196,.35); border-color:var(--cyan);}
+  .panel:active{transform:scale(0.98);}
 
   select.lang-select{
     background:var(--panel-2);
@@ -99,36 +104,15 @@
     width:104px;height:104px;
     border-radius:50%;
     border:none;
-    cursor:pointer;
+    pointer-events:none; /* האירוע מנוהל על ידי הפאנל */
     position:relative;
     display:flex;align-items:center;justify-content:center;
-    user-select:none;
-    -webkit-user-select:none;
-    touch-action:none;
-    transition:transform .15s ease;
   }
   .mic-btn.side-a{background:linear-gradient(160deg,#F0BE7C,var(--gold));}
   .mic-btn.side-b{background:linear-gradient(160deg,#8CDCE6,var(--cyan));}
-  .mic-btn:active{transform:scale(.96);}
   .mic-btn svg{width:38px;height:38px;}
   .mic-btn.side-a svg{stroke:#241705;}
   .mic-btn.side-b svg{stroke:#052326;}
-
-  .pulse-ring{
-    position:absolute;inset:-8px;
-    border-radius:50%;
-    border:2px solid currentColor;
-    opacity:0;
-  }
-  .mic-btn.side-a .pulse-ring{color:var(--gold);}
-  .mic-btn.side-b .pulse-ring{color:var(--cyan);}
-  .mic-btn.recording .pulse-ring{
-    animation:pulse 1.1s ease-out infinite;
-  }
-  @keyframes pulse{
-    0%{opacity:.55; transform:scale(1);}
-    100%{opacity:0; transform:scale(1.55);}
-  }
 
   .hint{text-align:center;font-size:12px;color:var(--muted);min-height:16px;}
 
@@ -155,15 +139,6 @@
     padding:0 4px;
   }
   .divider svg{width:22px;height:22px;stroke:var(--muted);}
-  .wave{display:flex;align-items:center;gap:3px;height:34px;}
-  .wave span{
-    width:3px;border-radius:2px;
-    background:var(--hair);
-    height:8px;
-    transition:height .18s ease, background .18s ease;
-  }
-  .wave.live-a span{background:var(--gold);}
-  .wave.live-b span{background:var(--cyan);}
 
   .status-row{
     display:flex;justify-content:center;margin-top:16px;
@@ -178,12 +153,6 @@
     border-radius:999px;
   }
   .status-pill.warn{color:var(--danger); border-color:rgba(217,105,79,.4);}
-
-  .iframe-warning{
-    margin-top:14px; font-size:12px; line-height:1.6; color:var(--gold);
-    background:rgba(227,168,87,.08); border:1px solid var(--gold-dim);
-    border-radius:12px; padding:12px 14px; text-align:center;
-  }
 
   .apikey-box{
     margin-top:18px;
@@ -309,47 +278,39 @@
   <div class="head">
     <div class="eyebrow">תרגום דו־כיווני · בזמן אמת</div>
     <h1>מתרגם קולי חכם</h1>
-    <div class="sub">לחצו והחזיקו על אחד הכפתורים כדי לדבר — התרגום יופיע ויושמע בצד השני</div>
+    <div class="sub">לחצו והחזיקו על אחד האזורים כדי לדבר — התרגום החכם יופיע ויושמע בצד השני</div>
   </div>
 
   <div class="panels">
     <div class="panel" id="panelA">
-      <select class="lang-select" id="selectA"></select>
+      <select class="lang-select" id="selectA" onclick="event.stopPropagation()"></select>
       <div class="mic-wrap">
-        <button class="mic-btn side-a" id="btnA" aria-label="לחץ והחזק לדיבור בשפה א">
-          <span class="pulse-ring"></span>
+        <div class="mic-btn side-a">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/>
             <path d="M19 11a7 7 0 0 1-14 0"/>
             <path d="M12 18v3"/>
           </svg>
-        </button>
+        </div>
       </div>
       <div class="hint" id="hintA">לחץ והחזק לדיבור</div>
       <div class="transcript empty" id="liveA">כאן יופיע מה שנאמר…</div>
     </div>
 
     <div class="divider">
-      <div class="wave" id="waveA">
-        <span></span><span></span><span></span><span></span><span></span>
-      </div>
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M4 12h16m0 0-5-5m5 5-5 5M20 6l-5 5" style="display:none"/><path d="M6 8h12M6 16h12" stroke-linecap="round"/></svg>
-      <div class="wave" id="waveB">
-        <span></span><span></span><span></span><span></span><span></span>
-      </div>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M6 8h12M6 16h12" stroke-linecap="round"/></svg>
     </div>
 
     <div class="panel" id="panelB">
-      <select class="lang-select" id="selectB"></select>
+      <select class="lang-select" id="selectB" onclick="event.stopPropagation()"></select>
       <div class="mic-wrap">
-        <button class="mic-btn side-b" id="btnB" aria-label="לחץ והחזק לדיבור בשפה ב">
-          <span class="pulse-ring"></span>
+        <div class="mic-btn side-b">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/>
             <path d="M19 11a7 7 0 0 1-14 0"/>
             <path d="M12 18v3"/>
           </svg>
-        </button>
+        </div>
       </div>
       <div class="hint" id="hintB">לחץ והחזק לדיבור</div>
       <div class="transcript empty" id="liveB">כאן יופיע מה שנאמר…</div>
@@ -357,10 +318,6 @@
   </div>
 
   <div class="status-row"><div class="status-pill" id="status">מוכן להקשבה</div></div>
-  <div class="iframe-warning" id="iframeWarning" style="display:none;">
-    ⚠️ נראה שהעמוד נטען בתוך תצוגה מוטמעת (iframe). דפדפנים חוסמים או מגבילים זיהוי דיבור בתצוגות כאלה מטעמי פרטיות.
-    <br>אם ההקלטה לא עובדת: הורידו את הקובץ ופתחו אותו ישירות בכרטיסייה בדפדפן (לא בתוך חלון מוטמע) — כך זה יעבוד באופן מלא.
-  </div>
 
   <div class="apikey-box">
     <div class="apikey-head" id="apikeyHead">
@@ -377,11 +334,7 @@
         <button id="apikeyClear">נקה</button>
       </div>
       <div class="apikey-note">
-        נדרש מפתח API אישי כדי שהתרגום יעבוד כשהעמוד רץ כאתר עצמאי (לא בתוך claude.ai).
-        אפשר ליצור מפתח <b>חינמי לגמרי, בלי כרטיס אשראי</b> ב-
-        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>
-        (התחברות עם חשבון Google רגיל). מפתחות חדשים עשויים להתחיל ב-<code>AQ.</code> במקום <code>AIza</code> — זה תקין, גוגל עברה לפורמט חדש, ושתי הצורות עובדות כאן.
-        המפתח נשמר רק בדפדפן שלכם (localStorage) ונשלח ישירות מהדפדפן לגוגל — הוא לא עובר דרך שום שרת אחר.
+        נדרש מפתח API אישי כדי שהתרגום יעבוד (אפשר ליצור בחינם ב־<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>).
       </div>
     </div>
   </div>
@@ -396,11 +349,6 @@
   <div class="history">
     <div class="history-title">היסטוריית שיחה</div>
     <div id="historyList"><div class="history-empty">עדיין אין תרגומים — התחילו לדבר כדי לראות אותם כאן</div></div>
-  </div>
-
-  <div class="footnote">
-    התרגום מבוצע על ידי מודל שפה המבין הקשר משיחה קודמת (ולא רק מילה־במילה).<br>
-    זיהוי הדיבור וההשמעה הקולית מתבצעים בדפדפן שלכם — ייתכן שיידרש אישור גישה למיקרופון, ותמיכה עשויה להשתנות בין דפדפנים (מומלץ Chrome).
   </div>
 
 </div>
@@ -426,13 +374,8 @@ const LANGUAGES = [
 const state = {
   langA: 'he-IL',
   langB: 'en-US',
-  isHolding: false,
+  isRecording: false,
   activeSide: null,
-  recognition: null,
-  finalTranscript: '',
-  lastInterim: '',
-  finished: false,
-  safetyTimer: null,
   history: [],
   latest: null,
 };
@@ -440,20 +383,15 @@ const state = {
 const els = {
   selectA: document.getElementById('selectA'),
   selectB: document.getElementById('selectB'),
-  btnA: document.getElementById('btnA'),
-  btnB: document.getElementById('btnB'),
   panelA: document.getElementById('panelA'),
   panelB: document.getElementById('panelB'),
   hintA: document.getElementById('hintA'),
   hintB: document.getElementById('hintB'),
   liveA: document.getElementById('liveA'),
   liveB: document.getElementById('liveB'),
-  waveA: document.getElementById('waveA'),
-  waveB: document.getElementById('waveB'),
   status: document.getElementById('status'),
   shareLatest: document.getElementById('shareLatest'),
   historyList: document.getElementById('historyList'),
-  iframeWarning: document.getElementById('iframeWarning'),
   apikeyHead: document.getElementById('apikeyHead'),
   apikeyChevron: document.getElementById('apikeyChevron'),
   apikeyBody: document.getElementById('apikeyBody'),
@@ -463,19 +401,11 @@ const els = {
   apikeyDot: document.getElementById('apikeyDot'),
 };
 
-// ---------- API key management ----------
+// API Key management
 const API_KEY_STORAGE = 'voice_translator_gemini_api_key';
-
-function loadApiKey(){
-  try{ return localStorage.getItem(API_KEY_STORAGE) || ''; }
-  catch(e){ return ''; }
-}
-function saveApiKey(key){
-  try{ localStorage.setItem(API_KEY_STORAGE, key); }catch(e){}
-}
-function clearApiKey(){
-  try{ localStorage.removeItem(API_KEY_STORAGE); }catch(e){}
-}
+function loadApiKey(){ try{ return localStorage.getItem(API_KEY_STORAGE) || ''; }catch(e){ return ''; } }
+function saveApiKey(key){ try{ localStorage.setItem(API_KEY_STORAGE, key); }catch(e){} }
+function clearApiKey(){ try{ localStorage.removeItem(API_KEY_STORAGE); }catch(e){} }
 function refreshApiKeyUI(){
   const key = loadApiKey();
   els.apikeyDot.classList.toggle('ok', !!key);
@@ -500,14 +430,6 @@ els.apikeyClear.addEventListener('click', ()=>{
   refreshApiKeyUI();
   setStatus('מפתח נמחק');
 });
-
-try{
-  if(window.self !== window.top){
-    els.iframeWarning.style.display = 'block';
-  }
-}catch(e){
-  els.iframeWarning.style.display = 'block';
-}
 
 function populateSelect(sel, selected){
   LANGUAGES.forEach(l=>{
@@ -534,166 +456,101 @@ function setStatus(text, warn){
   els.status.classList.toggle('warn', !!warn);
 }
 
-// ---------- Speech recognition ----------
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+// Speech Recognition setup (Clean & Mobile Friendly)
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
 
-async function startRecording(side){
-  if(state.isHolding) return;
-  if(!SR){
-    setStatus('זיהוי דיבור אינו נתמך בדפדפן זה — נסו Chrome', true);
-    return;
-  }
+if(SpeechRecognition){
+  recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+}
+
+function startRecording(side){
+  if(state.isRecording || !recognition) return;
+  state.isRecording = true;
+  state.activeSide = side;
   window.speechSynthesis && window.speechSynthesis.cancel();
 
-  state.activeSide = side;
-  state.isHolding = true;
-  state.finalTranscript = '';
-  state.lastInterim = '';
-
-  // בקשת הרשאה אוטומטית ושחרור חומרה מיידית מתוך אירוע הלחיצה
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stream.getTracks().forEach(track => track.stop());
-  } catch (err) {
-    state.isHolding = false;
-    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-      setStatus('הגישה למיקרופון נחסמה — יש לאשר גישה בהגדרות הדפדפן', true);
-    } else {
-      setStatus('שגיאת גישה למיקרופון: ' + err.name, true);
-    }
-    return;
-  }
-
-  // בדיקה האם המשתמש שחרר את הלחיצה בזמן הבקשה
-  if (!state.isHolding) return;
-
   const lang = side === 'a' ? state.langA : state.langB;
-  const rec = new SR();
-  rec.lang = lang;
-  rec.continuous = true;
-  rec.interimResults = true;
+  recognition.lang = lang;
 
-  rec.onresult = (e)=>{
-    let interim = '';
-    for(let i = e.resultIndex; i < e.results.length; i++){
-      const t = e.results[i][0].transcript;
-      if(e.results[i].isFinal) state.finalTranscript += t + ' ';
-      else interim += t;
-    }
-    state.lastInterim = interim;
-    updateLive(side, (state.finalTranscript + interim).trim());
-  };
+  const liveEl = side === 'a' ? els.liveA : els.liveB;
+  const hintEl = side === 'a' ? els.hintA : els.hintB;
+  const panelEl = side === 'a' ? els.panelA : els.panelB;
 
-  rec.onerror = (e)=>{
-    if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
-      setStatus('הגישה למיקרופון נחסמה בהגדרות הדפדפן', true);
-    } else if(e.error === 'audio-capture'){
-      setStatus('לא נמצא מיקרופון זמין במכשיר', true);
-    } else if(e.error === 'network'){
-      setStatus('שירות זיהוי הדיבור לא זמין (בעיית רשת) — נסו שוב', true);
-    } else if(e.error === 'no-speech'){
-      setStatus('לא נשמע דיבור — נסו לדבר קרוב יותר למיקרופון');
-    } else if(e.error !== 'aborted'){
-      setStatus('שגיאת זיהוי דיבור: ' + e.error, true);
-    }
-  };
+  liveEl.classList.remove('empty');
+  liveEl.textContent = "מקשיב...";
+  hintEl.textContent = "שחרר לסיום";
+  panelEl.classList.add(side === 'a' ? 'active-a' : 'active-b');
+  setStatus(side === 'a' ? 'מקשיב בשפה א…' : 'מקשיב בשפה ב…');
 
-  rec.onend = ()=>{
-    if(state.isHolding && state.recognition === rec){
-      try{ rec.start(); }catch(err){}
-    }
-  };
-
-  state.recognition = rec;
-  state.finished = false;
-  try{
-    rec.start();
-    setActiveUI(side, true);
-    setStatus(side==='a' ? 'מקשיב בעברית/בשפה א…' : 'מקשיב בשפה ב…');
-  }catch(err){
-    state.isHolding = false;
-    setStatus('לא ניתן להפעיל את המיקרופון', true);
+  try {
+    recognition.start();
+  } catch(e) {
+    state.isRecording = false;
+    panelEl.classList.remove('active-a', 'active-b');
+    setStatus('שגיאה בהפעלת מיקרופון', true);
   }
 
-  clearTimeout(state.safetyTimer);
-  state.safetyTimer = setTimeout(()=>{
-    if(state.isHolding) stopRecording();
-  }, 20000);
+  recognition.onresult = (event) => {
+    let transcript = '';
+    for(let i = event.resultIndex; i < event.results.length; i++){
+      transcript += event.results[i][0].transcript;
+    }
+    liveEl.textContent = transcript;
+  };
+
+  recognition.onerror = (e) => {
+    console.error("Speech error", e);
+    stopRecording(side);
+  };
+
+  recognition.onend = () => {
+    // מופעל כשהדיבור נפסק או כשקוראים ל-stop
+    if(state.isRecording){
+      stopRecording(side);
+    }
+  };
 }
 
-function stopRecording(){
-  if(!state.isHolding) return;
-  const side = state.activeSide;
-  state.isHolding = false;
-  clearTimeout(state.safetyTimer);
+function stopRecording(side){
+  if(!state.isRecording) return;
+  state.isRecording = false;
 
-  const rec = state.recognition;
-  if(rec){
-    try{ rec.abort(); }catch(e){}
-    try{ rec.stop(); }catch(e){}
-  }
-  setActiveUI(side, false);
+  const panelEl = side === 'a' ? els.panelA : els.panelB;
+  const hintEl = side === 'a' ? els.hintA : els.hintB;
+  const liveEl = side === 'a' ? els.liveA : els.liveB;
 
-  if(state.finished) return;
-  state.finished = true;
-  finishRecording(side);
-}
+  panelEl.classList.remove('active-a', 'active-b');
+  hintEl.textContent = "לחץ והחזק לדיבור";
 
-function finishRecording(side){
-  let text = state.finalTranscript.trim();
-  if(!text && state.lastInterim) text = state.lastInterim.trim();
-  state.finalTranscript = '';
-  state.lastInterim = '';
-  if(!text){
+  try { recognition.stop(); } catch(e){}
+
+  const text = liveEl.textContent.trim();
+  if(!text || text === "מקשיב..."){
     setStatus('לא זוהה דיבור — נסו שוב');
+    liveEl.textContent = "כאן יופיע מה שנאמר…";
+    liveEl.classList.add('empty');
     return;
   }
+
   translateAndSpeak(text, side);
 }
 
-function setActiveUI(side, active){
-  const btn = side==='a' ? els.btnA : els.btnB;
-  const panel = side==='a' ? els.panelA : els.panelB;
-  const hint = side==='a' ? els.hintA : els.hintB;
-  const wave = side==='a' ? els.waveA : els.waveB;
-  btn.classList.toggle('recording', active);
-  panel.classList.toggle(side==='a' ? 'active-a':'active-b', active);
-  hint.textContent = active ? 'מקשיב… שחררו לסיום' : 'לחץ והחזק לדיבור';
-  wave.classList.toggle(side==='a' ? 'live-a':'live-b', active);
-  if(active) animateWave(wave); else resetWave(wave);
-}
-
-let waveIntervals = {};
-function animateWave(waveEl){
-  const spans = waveEl.querySelectorAll('span');
-  waveIntervals[waveEl.id] = setInterval(()=>{
-    spans.forEach(s=> s.style.height = (6 + Math.random()*26) + 'px');
-  }, 140);
-}
-function resetWave(waveEl){
-  clearInterval(waveIntervals[waveEl.id]);
-  waveEl.querySelectorAll('span').forEach(s=> s.style.height = '8px');
-}
-
-function updateLive(side, text){
-  const el = side==='a' ? els.liveA : els.liveB;
-  el.classList.remove('empty');
-  el.textContent = text || '…';
-}
-
-// ---------- Translation (context-aware via Gemini) ----------
+// Smart Translation via Gemini
 async function translateAndSpeak(sourceText, side){
   const apiKey = loadApiKey();
   if(!apiKey){
-    setStatus('צריך קודם להזין מפתח API כדי לתרגם', true);
+    setStatus('צריך להזין מפתח API כדי לתרגם חכם', true);
     els.apikeyBody.classList.add('open');
     els.apikeyChevron.textContent = '▴';
     return;
   }
 
-  setStatus('מתרגם…');
-  const fromCode = side==='a' ? state.langA : state.langB;
-  const toCode = side==='a' ? state.langB : state.langA;
+  setStatus('מתרגם חכם בהקשר השיחה…');
+  const fromCode = side === 'a' ? state.langA : state.langB;
+  const toCode = side === 'a' ? state.langB : state.langA;
   const fromName = langName(fromCode);
   const toName = langName(toCode);
 
@@ -702,15 +559,15 @@ async function translateAndSpeak(sourceText, side){
   ).join('\n---\n');
 
   const systemPrompt = `אתה מנוע תרגום מקצועי, טבעי ורגיש להקשר. תרגם את המשפט האחרון מ-${fromName} ל-${toName}.
-השתמש בהיסטוריית השיחה שסופקה (אם יש) כדי לפתור עמימויות, לשמור על עקביות מונחים, טון ורצף שיחה.
-החזר אך ורק את הטקסט המתורגם ב-${toName}, ללא הסברים, ללא מירכאות, ללא תגיות שפה, ללא טקסט נוסף.`;
+השתמש בהיסטוריית השיחה שסופקה (אם יש) כדי לשמור על עקביות.
+החזר אך ורק את הטקסט המתורגם ב-${toName}, ללא הסברים, מירכאות או תגיות.`;
 
   const userPrompt = contextLines
     ? `הקשר שיחה קודם:\n${contextLines}\n---\nתרגם עכשיו:\n${sourceText}`
     : `תרגם:\n${sourceText}`;
 
   try{
-    const model = "gemini-3.6-flash";
+    const model = "gemini-2.5-flash"; // או gemini-3.6-flash לפי הצורך
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
@@ -727,15 +584,7 @@ async function translateAndSpeak(sourceText, side){
     );
 
     if(!response.ok){
-      let detail = '';
-      try{ const errJson = await response.json(); detail = errJson?.error?.message || ''; }catch(e){}
-      if(response.status === 400 || response.status === 403){
-        setStatus('מפתח API לא תקין — בדקו אותו בהגדרות למעלה', true);
-      } else if(response.status === 429){
-        setStatus('חרגתם ממכסת הבקשות החינמית לדקה — המתינו רגע ונסו שוב', true);
-      } else {
-        setStatus('שגיאת תרגום (' + response.status + ') ' + detail, true);
-      }
+      setStatus('שגיאה בתרגום מול גוגל (' + response.status + ')', true);
       return;
     }
 
@@ -745,18 +594,14 @@ async function translateAndSpeak(sourceText, side){
     translated = translated.replace(/^["'"]|["'"]$/g,'').trim();
 
     if(!translated){
-      setStatus('לא התקבל תרגום — נסו שוב', true);
+      setStatus('לא התקבל תרגום', true);
       return;
     }
 
-    const targetLiveEl = side==='a' ? els.liveB : els.liveA;
+    const targetLiveEl = side === 'a' ? els.liveB : els.liveA;
     targetLiveEl.classList.remove('empty');
-    targetLiveEl.classList.add(side==='a' ? 'result-b' : 'result-a');
+    targetLiveEl.classList.add(side === 'a' ? 'result-b' : 'result-a');
     targetLiveEl.textContent = translated;
-
-    const sourceLiveEl = side==='a' ? els.liveA : els.liveB;
-    sourceLiveEl.classList.remove('empty');
-    sourceLiveEl.textContent = sourceText;
 
     speak(translated, toCode);
 
@@ -773,7 +618,7 @@ async function translateAndSpeak(sourceText, side){
     setStatus('מוכן להקשבה');
   }catch(err){
     console.error(err);
-    setStatus('שגיאת תרגום — בדקו חיבור לרשת ונסו שוב', true);
+    setStatus('שגיאת תקשורת בתרגום', true);
   }
 }
 
@@ -782,18 +627,10 @@ function speak(text, langCode){
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
   utter.lang = langCode;
-  const voices = window.speechSynthesis.getVoices();
-  const match = voices.find(v=>v.lang === langCode) || voices.find(v=>v.lang.startsWith(langCode.split('-')[0]));
-  if(match) utter.voice = match;
   window.speechSynthesis.speak(utter);
 }
 
-if(window.speechSynthesis){
-  window.speechSynthesis.onvoiceschanged = ()=>{};
-  window.speechSynthesis.getVoices();
-}
-
-// ---------- History rendering ----------
+// History & Sharing
 function renderHistory(){
   if(state.history.length === 0){
     els.historyList.innerHTML = '<div class="history-empty">עדיין אין תרגומים — התחילו לדבר כדי לראות אותם כאן</div>';
@@ -813,19 +650,12 @@ function renderHistory(){
         <span class="h-text muted">${escapeHtml(h.targetText)}</span>
       </div>
       <div class="h-footer">
-        <button class="h-share" data-idx="${state.history.length-1-idx}">
-          <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.05-1.36A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.08-1.12l-.29-.17-3.02.81.81-2.94-.19-.3A8 8 0 1 1 12 20Z"/></svg>
-          שתף
+        <button class="h-share" onclick="shareEntry(state.history[state.history.length-1-${idx}])">
+          שתף בוואטסאפ
         </button>
       </div>
     `;
     els.historyList.appendChild(item);
-  });
-  els.historyList.querySelectorAll('.h-share').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const idx = parseInt(btn.getAttribute('data-idx'), 10);
-      shareEntry(state.history[idx]);
-    });
   });
 }
 
@@ -842,47 +672,34 @@ function shareEntry(entry){
 
 els.shareLatest.addEventListener('click', ()=> shareEntry(state.latest));
 
-// ---------- Press & hold bindings ----------
-function bindHold(btn, side){
-  const start = (e)=>{
+// Bind touch/mouse events cleanly like the working template
+function bindPanel(panel, side){
+  const start = (e) => {
+    // מניעת הפעלה בטעות אם לוחצים על תפריט בחירת השפה
+    if(e.target.tagName === 'SELECT') return;
     e.preventDefault();
-    if(e.pointerId !== undefined){
-      try{ btn.setPointerCapture(e.pointerId); }catch(err){}
-    }
     startRecording(side);
   };
-  const end = (e)=>{
+  
+  const end = (e) => {
+    if(e.target.tagName === 'SELECT') return;
     e.preventDefault();
-    if(state.activeSide === side) stopRecording();
+    if(state.activeSide === side) {
+      stopRecording(side);
+    }
   };
 
-  if(window.PointerEvent){
-    btn.addEventListener('pointerdown', start);
-    btn.addEventListener('pointerup', end);
-    btn.addEventListener('pointercancel', end);
-  } else {
-    btn.addEventListener('mousedown', start);
-    btn.addEventListener('mouseup', end);
-    btn.addEventListener('mouseleave', end);
-    btn.addEventListener('touchstart', start, {passive:false});
-    btn.addEventListener('touchend', end);
-    btn.addEventListener('touchcancel', end);
-  }
+  panel.addEventListener('mousedown', start);
+  panel.addEventListener('mouseup', end);
+  panel.addEventListener('touchstart', start, {passive: false});
+  panel.addEventListener('touchend', end, {passive: false});
 }
-bindHold(els.btnA, 'a');
-bindHold(els.btnB, 'b');
 
-window.addEventListener('pointerup', ()=>{ if(state.isHolding) stopRecording(); });
-window.addEventListener('pointercancel', ()=>{ if(state.isHolding) stopRecording(); });
-window.addEventListener('mouseup', ()=>{ if(state.isHolding) stopRecording(); });
-window.addEventListener('touchend', ()=>{ if(state.isHolding) stopRecording(); });
-window.addEventListener('blur', ()=>{ if(state.isHolding) stopRecording(); });
-document.addEventListener('visibilitychange', ()=>{
-  if(document.hidden && state.isHolding) stopRecording();
-});
+bindPanel(els.panelA, 'a');
+bindPanel(els.panelB, 'b');
 
-if(!SR){
-  setStatus('זיהוי דיבור אינו נתמך בדפדפן זה — נסו Chrome', true);
+if(!SpeechRecognition){
+  setStatus('זיהוי דיבור אינו נתמך בדפדפן זה — מומלץ להשתמש ב־Chrome', true);
 }
 </script>
 </body>
