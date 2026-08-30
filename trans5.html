@@ -100,7 +100,7 @@
     position:relative;
     display:flex;align-items:center;justify-content:center;
     transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease;
-    touch-action:none; /* מונע גלילה במובייל בזמן החזקת הכפתור */
+    touch-action:none;
     user-select:none;
     -webkit-user-select:none;
   }
@@ -471,6 +471,7 @@ function setStatus(text, warn){
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
+let finalTranscript = ''; // משתנה לשמירת הטקסט הסופי ללא כפילויות
 
 if(SpeechRecognition){
   recognition = new SpeechRecognition();
@@ -489,7 +490,8 @@ function startRecording(side){
   state.activeSide = side;
   window.speechSynthesis && window.speechSynthesis.cancel();
 
-  // איפוס מלא של שתי התיבות בתחילת הקלטה חדשה
+  // איפוס מלא של הטקסטים ותחילת סשן נקי
+  finalTranscript = '';
   els.liveA.textContent = "כאן יופיע מה שנאמר…";
   els.liveA.classList.add('empty');
   els.liveA.classList.remove('result-a', 'result-b');
@@ -512,17 +514,15 @@ function startRecording(side){
   setStatus(side === 'a' ? 'מקשיב בשפה א…' : 'מקשיב בשפה ב…');
 
   recognition.onresult = (event) => {
-    let final = '';
-    let interim = '';
-    // בניית הטקסט מחדש מכל תוצאות הסשן כדי למנוע כפילויות מילים
-    for(let i = 0; i < event.results.length; i++){
+    let interimTranscript = '';
+    for(let i = event.resultIndex; i < event.results.length; ++i){
       if(event.results[i].isFinal){
-        final += event.results[i][0].transcript;
+        finalTranscript += event.results[i][0].transcript + ' ';
       } else {
-        interim += event.results[i][0].transcript;
+        interimTranscript += event.results[i][0].transcript;
       }
     }
-    liveEl.textContent = final + interim || "מקשיב...";
+    liveEl.textContent = (finalTranscript + interimTranscript).trim() || "מקשיב...";
   };
 
   recognition.onerror = (e) => {
@@ -530,7 +530,6 @@ function startRecording(side){
   };
 
   recognition.onend = () => {
-    // אם ההקלטה עדיין פעילה אבל הדפדפן סגר אותה אוטומטית
     if(state.isRecording && state.activeSide === side){
       try { recognition.start(); } catch(err){}
     }
@@ -603,7 +602,7 @@ async function translateAndSpeak(sourceText, side){
     : `תרגם:\n${sourceText}`;
 
   try{
-    const model = "gemini-3.6-flash";
+    const model = "gemini-1.5-flash";
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
@@ -618,6 +617,11 @@ async function translateAndSpeak(sourceText, side){
         })
       }
     );
+
+    if(response.status === 429){
+      setStatus('הגעת למכסת הבקשות של מפתח ה-API (שגיאה 429). המתן כדקה ונסה שוב.', true);
+      return;
+    }
 
     if(!response.ok){
       setStatus('שגיאה בתרגום מול גוגל (' + response.status + ')', true);
@@ -707,7 +711,6 @@ function shareEntry(entry){
 
 els.shareLatest.addEventListener('click', ()=> shareEntry(state.latest));
 
-// חיבור אירועי לחיצה רציפה (החזקה למקלדת ועכבר / מגע במובייל)
 function setupHoldToTalk(btn, side) {
   const handleStart = (e) => {
     e.preventDefault();
