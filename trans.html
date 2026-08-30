@@ -179,20 +179,6 @@
   }
   .status-pill.warn{color:var(--danger); border-color:rgba(217,105,79,.4);}
 
-  .mic-prime-row{
-    display:flex; align-items:center; justify-content:center; gap:10px;
-    margin-top:12px; flex-wrap:wrap;
-  }
-  .mic-prime-btn{
-    font-family:inherit; font-size:13px; font-weight:600;
-    background:var(--panel-2); color:var(--ink);
-    border:1px solid var(--hair); padding:8px 16px; border-radius:999px;
-    cursor:pointer;
-  }
-  .mic-prime-btn.granted{border-color:var(--whatsapp); color:var(--whatsapp);}
-  .mic-prime-btn.denied{border-color:var(--danger); color:var(--danger);}
-  .mic-prime-note{font-size:11.5px; color:var(--muted);}
-
   .iframe-warning{
     margin-top:14px; font-size:12px; line-height:1.6; color:var(--gold);
     background:rgba(227,168,87,.08); border:1px solid var(--gold-dim);
@@ -371,10 +357,6 @@
   </div>
 
   <div class="status-row"><div class="status-pill" id="status">מוכן להקשבה</div></div>
-  <div class="mic-prime-row" id="micPrimeRow">
-    <button class="mic-prime-btn" id="micPrimeBtn">אפשר גישה למיקרופון</button>
-    <span class="mic-prime-note" id="micPrimeNote">לחצו כאן פעם אחת בתחילת השימוש</span>
-  </div>
   <div class="iframe-warning" id="iframeWarning" style="display:none;">
     ⚠️ נראה שהעמוד נטען בתוך תצוגה מוטמעת (iframe). דפדפנים חוסמים או מגבילים זיהוי דיבור בתצוגות כאלה מטעמי פרטיות.
     <br>אם ההקלטה לא עובדת: הורידו את הקובץ ופתחו אותו ישירות בכרטיסייה בדפדפן (לא בתוך חלון מוטמע) — כך זה יעבוד באופן מלא.
@@ -451,7 +433,7 @@ const state = {
   lastInterim: '',
   finished: false,
   safetyTimer: null,
-  history: [], // {side, sourceText, sourceLangName, targetText, targetLangName}
+  history: [],
   latest: null,
 };
 
@@ -471,8 +453,6 @@ const els = {
   status: document.getElementById('status'),
   shareLatest: document.getElementById('shareLatest'),
   historyList: document.getElementById('historyList'),
-  micPrimeBtn: document.getElementById('micPrimeBtn'),
-  micPrimeNote: document.getElementById('micPrimeNote'),
   iframeWarning: document.getElementById('iframeWarning'),
   apikeyHead: document.getElementById('apikeyHead'),
   apikeyChevron: document.getElementById('apikeyChevron'),
@@ -521,43 +501,13 @@ els.apikeyClear.addEventListener('click', ()=>{
   setStatus('מפתח נמחק');
 });
 
-// Detect whether we're running inside an embedded iframe (common cause of
-// mic permission repeatedly re-prompting, or speech recognition silently
-// failing even after permission is granted).
 try{
   if(window.self !== window.top){
     els.iframeWarning.style.display = 'block';
   }
 }catch(e){
-  // Cross-origin access to window.top throws — that itself confirms we're
-  // in a cross-origin embedded frame.
   els.iframeWarning.style.display = 'block';
 }
-
-els.micPrimeBtn.addEventListener('click', async ()=>{
-  els.micPrimeNote.textContent = 'מבקש הרשאה…';
-  try{
-    // מבקשים הרשאה ומיד משחררים את תפיסת החומרה של המיקרופון
-    const tempStream = await navigator.mediaDevices.getUserMedia({audio:true});
-    tempStream.getTracks().forEach(track => track.stop()); // שחרור נעילת החומרה בזמן שההרשאה נשמרת בדפדפן
-
-    els.micPrimeBtn.textContent = 'גישה למיקרופון אושרה ✓';
-    els.micPrimeBtn.classList.add('granted');
-    els.micPrimeBtn.classList.remove('denied');
-    els.micPrimeNote.textContent = 'אפשר להתחיל לדבר';
-  }catch(err){
-    els.micPrimeBtn.textContent = 'הגישה נחסמה — נסו שוב';
-    els.micPrimeBtn.classList.add('denied');
-    els.micPrimeNote.textContent = 'בדקו הרשאות מיקרופון בהגדרות הדפדפן/האתר';
-    setStatus('גישה למיקרופון נחסמה: ' + err.name, true);
-  }
-});
-    els.micPrimeBtn.textContent = 'הגישה נחסמה — נסו שוב';
-    els.micPrimeBtn.classList.add('denied');
-    els.micPrimeNote.textContent = 'בדקו הרשאות מיקרופון בהגדרות הדפדפן/האתר';
-    setStatus('גישה למיקרופון נחסמה: ' + err.name, true);
-  }
-});
 
 function populateSelect(sel, selected){
   LANGUAGES.forEach(l=>{
@@ -587,7 +537,7 @@ function setStatus(text, warn){
 // ---------- Speech recognition ----------
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-function startRecording(side){
+async function startRecording(side){
   if(state.isHolding) return;
   if(!SR){
     setStatus('זיהוי דיבור אינו נתמך בדפדפן זה — נסו Chrome', true);
@@ -598,6 +548,24 @@ function startRecording(side){
   state.activeSide = side;
   state.isHolding = true;
   state.finalTranscript = '';
+  state.lastInterim = '';
+
+  // בקשת הרשאה אוטומטית ושחרור חומרה מיידית מתוך אירוע הלחיצה
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach(track => track.stop());
+  } catch (err) {
+    state.isHolding = false;
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      setStatus('הגישה למיקרופון נחסמה — יש לאשר גישה בהגדרות הדפדפן', true);
+    } else {
+      setStatus('שגיאת גישה למיקרופון: ' + err.name, true);
+    }
+    return;
+  }
+
+  // בדיקה האם המשתמש שחרר את הלחיצה בזמן הבקשה
+  if (!state.isHolding) return;
 
   const lang = side === 'a' ? state.langA : state.langB;
   const rec = new SR();
@@ -618,11 +586,11 @@ function startRecording(side){
 
   rec.onerror = (e)=>{
     if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
-      setStatus('הגישה למיקרופון נחסמה — לחצו על "אפשר גישה למיקרופון" למעלה', true);
+      setStatus('הגישה למיקרופון נחסמה בהגדרות הדפדפן', true);
     } else if(e.error === 'audio-capture'){
       setStatus('לא נמצא מיקרופון זמין במכשיר', true);
     } else if(e.error === 'network'){
-      setStatus('שירות זיהוי הדיבור לא זמין (בעיית רשת/הרשאות בתצוגה מוטמעת) — נסו לפתוח את הקובץ ישירות בדפדפן', true);
+      setStatus('שירות זיהוי הדיבור לא זמין (בעיית רשת) — נסו שוב', true);
     } else if(e.error === 'no-speech'){
       setStatus('לא נשמע דיבור — נסו לדבר קרוב יותר למיקרופון');
     } else if(e.error !== 'aborted'){
@@ -631,9 +599,6 @@ function startRecording(side){
   };
 
   rec.onend = ()=>{
-    // Only auto-restart while the button is still physically held down.
-    // If the user already released, do nothing here — stopRecording()
-    // already takes care of finishing up, so we never re-trigger it twice.
     if(state.isHolding && state.recognition === rec){
       try{ rec.start(); }catch(err){}
     }
@@ -650,8 +615,6 @@ function startRecording(side){
     setStatus('לא ניתן להפעיל את המיקרופון', true);
   }
 
-  // Safety net: if something goes wrong and release events never fire,
-  // don't listen forever.
   clearTimeout(state.safetyTimer);
   state.safetyTimer = setTimeout(()=>{
     if(state.isHolding) stopRecording();
@@ -671,9 +634,6 @@ function stopRecording(){
   }
   setActiveUI(side, false);
 
-  // Don't wait on onend (it can be delayed or skipped by the browser once
-  // we've called abort/stop) — finish immediately with whatever transcript
-  // we've accumulated so far, including any un-finalized interim text.
   if(state.finished) return;
   state.finished = true;
   finishRecording(side);
@@ -721,11 +681,11 @@ function updateLive(side, text){
   el.textContent = text || '…';
 }
 
-// ---------- Translation (context-aware via Claude) ----------
+// ---------- Translation (context-aware via Gemini) ----------
 async function translateAndSpeak(sourceText, side){
   const apiKey = loadApiKey();
   if(!apiKey){
-    setStatus('צריך קודם להזין מפתח API (פרטו למעלה) כדי לתרגם', true);
+    setStatus('צריך קודם להזין מפתח API כדי לתרגם', true);
     els.apikeyBody.classList.add('open');
     els.apikeyChevron.textContent = '▴';
     return;
@@ -827,7 +787,7 @@ function speak(text, langCode){
   if(match) utter.voice = match;
   window.speechSynthesis.speak(utter);
 }
-// warm up voice list (some browsers load async)
+
 if(window.speechSynthesis){
   window.speechSynthesis.onvoiceschanged = ()=>{};
   window.speechSynthesis.getVoices();
@@ -877,17 +837,12 @@ function escapeHtml(str){
 
 function shareEntry(entry){
   if(!entry) return;
-  // Share only the translated text (target language) — not the source text.
   window.open(`https://wa.me/?text=${encodeURIComponent(entry.targetText)}`, '_blank');
 }
 
 els.shareLatest.addEventListener('click', ()=> shareEntry(state.latest));
 
-// ---------- Press & hold bindings (pointer events, with fallbacks) ----------
-// Pointer Events unify mouse/touch/pen and, combined with pointer capture,
-// guarantee the "up" event reaches this element even if the finger/cursor
-// drifts off the button while held — which is what caused recording to
-// get stuck "listening" after release.
+// ---------- Press & hold bindings ----------
 function bindHold(btn, side){
   const start = (e)=>{
     e.preventDefault();
@@ -906,7 +861,6 @@ function bindHold(btn, side){
     btn.addEventListener('pointerup', end);
     btn.addEventListener('pointercancel', end);
   } else {
-    // Fallback for older browsers without Pointer Events support
     btn.addEventListener('mousedown', start);
     btn.addEventListener('mouseup', end);
     btn.addEventListener('mouseleave', end);
@@ -918,9 +872,6 @@ function bindHold(btn, side){
 bindHold(els.btnA, 'a');
 bindHold(els.btnB, 'b');
 
-// Global fail-safes: if the release event never reaches the button itself
-// (dragged off-screen, browser quirk, window lost focus mid-press, etc.)
-// make sure we still stop listening.
 window.addEventListener('pointerup', ()=>{ if(state.isHolding) stopRecording(); });
 window.addEventListener('pointercancel', ()=>{ if(state.isHolding) stopRecording(); });
 window.addEventListener('mouseup', ()=>{ if(state.isHolding) stopRecording(); });
