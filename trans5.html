@@ -518,8 +518,18 @@ function createRecognizer(side, liveEl, hintEl, micEl){
     }
     state.finalTranscript = (state.committed + finalPart);
     state.interimTranscript = interimPart;
-    const combined = (state.committed + finalPart + interimPart).trim();
-    liveEl.textContent = combined || 'מקשיב…';
+
+    // Only show text that has actually locked in (finalPart) — the raw,
+    // still-being-revised guess (interimPart) can flicker and briefly
+    // repeat words while the recognizer is still "thinking", which looks
+    // like duplication on screen even though nothing is wrong underneath.
+    // A trailing "…" indicates it's still listening/processing.
+    const stable = (state.committed + finalPart).trim();
+    if(stable){
+      liveEl.textContent = interimPart ? stable + ' …' : stable;
+    } else {
+      liveEl.textContent = 'מקשיב…';
+    }
   };
 
   rec.onerror = (e) => {
@@ -849,4 +859,3 @@ if(!SpeechRecognitionAPI){
 </script>
 </body>
 </html>
-
