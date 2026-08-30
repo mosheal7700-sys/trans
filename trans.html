@@ -1,178 +1,937 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>אפליקציית תרגום חכם</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>מתרגם קולי חכם</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Hebrew:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0E1620;
+    --panel:#16202B;
+    --panel-2:#1C2731;
+    --ink:#F1ECE2;
+    --muted:#8A97A3;
+    --hair:#26323D;
+    --gold:#E3A857;
+    --gold-dim:#4A3C24;
+    --cyan:#4FB6C4;
+    --cyan-dim:#1F3A3E;
+    --whatsapp:#3FB27F;
+    --danger:#D9694F;
+    --radius:22px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(227,168,87,0.08), transparent 60%),
+      radial-gradient(1200px 600px at 85% 110%, rgba(79,182,196,0.08), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans Hebrew','IBM Plex Mono',sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:28px 16px 60px;
+  }
+  .app{width:100%;max-width:760px;}
 
-        body {
-            background-color: #f4f6f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
+  .head{text-align:center;margin-bottom:26px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:.18em;
+    color:var(--muted);
+    text-transform:uppercase;
+  }
+  h1{
+    font-size:30px;
+    font-weight:700;
+    margin:6px 0 4px;
+    letter-spacing:-0.01em;
+  }
+  .sub{color:var(--muted);font-size:14px;}
 
-        .phone-container {
-            width: 100%;
-            max-width: 400px;
-            height: 100%;
-            max-height: 800px;
-            background-color: #ffffff;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 24px;
-            position: relative;
-            border-radius: 30px;
-        }
+  .panels{
+    display:grid;
+    grid-template-columns:1fr auto 1fr;
+    gap:14px;
+    align-items:stretch;
+    margin-top:26px;
+  }
+  @media (max-width:620px){
+    .panels{grid-template-columns:1fr;}
+    .divider{flex-direction:row;padding:6px 0;}
+  }
 
-        header h1 {
-            font-size: 1.4rem;
-            color: #1a1a1a;
-            text-align: center;
-            margin-bottom: 20px;
-        }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--hair);
+    border-radius:var(--radius);
+    padding:20px 18px 22px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    transition:box-shadow .25s ease, border-color .25s ease;
+  }
+  .panel.active-a{box-shadow:0 0 0 1px var(--gold), 0 12px 30px -8px rgba(227,168,87,.35); border-color:var(--gold);}
+  .panel.active-b{box-shadow:0 0 0 1px var(--cyan), 0 12px 30px -8px rgba(79,182,196,.35); border-color:var(--cyan);}
 
-        .screen-area {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            justify-content: center;
-        }
+  select.lang-select{
+    background:var(--panel-2);
+    border:1px solid var(--hair);
+    color:var(--ink);
+    font-family:inherit;
+    font-size:14px;
+    padding:9px 12px;
+    border-radius:10px;
+    appearance:none;
+    -webkit-appearance:none;
+    cursor:pointer;
+    text-align:center;
+  }
+  select.lang-select:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 
-        .text-card {
-            background-color: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 16px;
-            padding: 16px;
-            min-height: 100px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
+  .mic-wrap{display:flex;justify-content:center;padding:6px 0 2px;}
+  .mic-btn{
+    width:104px;height:104px;
+    border-radius:50%;
+    border:none;
+    cursor:pointer;
+    position:relative;
+    display:flex;align-items:center;justify-content:center;
+    user-select:none;
+    -webkit-user-select:none;
+    touch-action:none;
+    transition:transform .15s ease;
+  }
+  .mic-btn.side-a{background:linear-gradient(160deg,#F0BE7C,var(--gold));}
+  .mic-btn.side-b{background:linear-gradient(160deg,#8CDCE6,var(--cyan));}
+  .mic-btn:active{transform:scale(.96);}
+  .mic-btn svg{width:38px;height:38px;}
+  .mic-btn.side-a svg{stroke:#241705;}
+  .mic-btn.side-b svg{stroke:#052326;}
 
-        .text-card span.label {
-            font-size: 0.8rem;
-            color: #6c757d;
-            font-weight: 600;
-        }
+  .pulse-ring{
+    position:absolute;inset:-8px;
+    border-radius:50%;
+    border:2px solid currentColor;
+    opacity:0;
+  }
+  .mic-btn.side-a .pulse-ring{color:var(--gold);}
+  .mic-btn.side-b .pulse-ring{color:var(--cyan);}
+  .mic-btn.recording .pulse-ring{
+    animation:pulse 1.1s ease-out infinite;
+  }
+  @keyframes pulse{
+    0%{opacity:.55; transform:scale(1);}
+    100%{opacity:0; transform:scale(1.55);}
+  }
 
-        .text-card p.content {
-            font-size: 1.1rem;
-            color: #212529;
-            margin-top: 8px;
-        }
+  .hint{text-align:center;font-size:12px;color:var(--muted);min-height:16px;}
 
-        .controls-area {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
+  .transcript{
+    background:var(--panel-2);
+    border:1px dashed var(--hair);
+    border-radius:14px;
+    padding:12px 14px;
+    min-height:52px;
+    font-size:15px;
+    line-height:1.5;
+    color:var(--ink);
+  }
+  .transcript.empty{color:var(--muted); font-style:italic; font-size:13px;}
+  .transcript.result-a{border-color:var(--gold-dim);}
+  .transcript.result-b{border-color:var(--cyan-dim);}
 
-        .language-buttons {
-            display: flex;
-            gap: 12px;
-        }
+  .divider{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    padding:0 4px;
+  }
+  .divider svg{width:22px;height:22px;stroke:var(--muted);}
+  .wave{display:flex;align-items:center;gap:3px;height:34px;}
+  .wave span{
+    width:3px;border-radius:2px;
+    background:var(--hair);
+    height:8px;
+    transition:height .18s ease, background .18s ease;
+  }
+  .wave.live-a span{background:var(--gold);}
+  .wave.live-b span{background:var(--cyan);}
 
-        .btn-talk {
-            flex: 1;
-            padding: 18px 12px;
-            border: none;
-            border-radius: 16px;
-            font-size: 1rem;
-            font-weight: bold;
-            color: #ffffff;
-            cursor: pointer;
-            transition: transform 0.1s ease, background-color 0.2s ease;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
+  .status-row{
+    display:flex;justify-content:center;margin-top:16px;
+  }
+  .status-pill{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--muted);
+    background:var(--panel);
+    border:1px solid var(--hair);
+    padding:6px 14px;
+    border-radius:999px;
+  }
+  .status-pill.warn{color:var(--danger); border-color:rgba(217,105,79,.4);}
 
-        .btn-talk:active {
-            transform: scale(0.96);
-        }
+  .mic-prime-row{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    margin-top:12px; flex-wrap:wrap;
+  }
+  .mic-prime-btn{
+    font-family:inherit; font-size:13px; font-weight:600;
+    background:var(--panel-2); color:var(--ink);
+    border:1px solid var(--hair); padding:8px 16px; border-radius:999px;
+    cursor:pointer;
+  }
+  .mic-prime-btn.granted{border-color:var(--whatsapp); color:var(--whatsapp);}
+  .mic-prime-btn.denied{border-color:var(--danger); color:var(--danger);}
+  .mic-prime-note{font-size:11.5px; color:var(--muted);}
 
-        .btn-he {
-            background-color: #007aff;
-        }
+  .iframe-warning{
+    margin-top:14px; font-size:12px; line-height:1.6; color:var(--gold);
+    background:rgba(227,168,87,.08); border:1px solid var(--gold-dim);
+    border-radius:12px; padding:12px 14px; text-align:center;
+  }
 
-        .btn-en {
-            background-color: #34c759;
-        }
+  .apikey-box{
+    margin-top:18px;
+    background:var(--panel);
+    border:1px solid var(--hair);
+    border-radius:16px;
+    padding:14px 16px;
+  }
+  .apikey-head{
+    display:flex; align-items:center; justify-content:space-between;
+    cursor:pointer; gap:10px;
+  }
+  .apikey-head-title{font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px;}
+  .apikey-status-dot{width:8px;height:8px;border-radius:50%;background:var(--danger);}
+  .apikey-status-dot.ok{background:var(--whatsapp);}
+  .apikey-chevron{font-size:12px; color:var(--muted); transition:transform .2s ease;}
+  .apikey-body{
+    margin-top:12px; display:none; flex-direction:column; gap:8px;
+  }
+  .apikey-body.open{display:flex;}
+  .apikey-body input{
+    background:var(--panel-2); border:1px solid var(--hair); color:var(--ink);
+    font-family:'IBM Plex Mono',monospace; font-size:13px;
+    padding:9px 12px; border-radius:10px; width:100%;
+  }
+  .apikey-row{display:flex; gap:8px;}
+  .apikey-row button{
+    font-family:inherit; font-size:12.5px; font-weight:600;
+    background:var(--panel-2); color:var(--ink); border:1px solid var(--hair);
+    padding:8px 14px; border-radius:10px; cursor:pointer; white-space:nowrap;
+  }
+  .apikey-row button.primary{background:var(--gold); color:#241705; border-color:var(--gold);}
+  .apikey-note{font-size:11.5px; color:var(--muted); line-height:1.6;}
+  .apikey-note a{color:var(--cyan);}
 
-        .btn-whatsapp {
-            background-color: #25d366;
-            color: white;
-            border: none;
-            padding: 14px;
-            border-radius: 16px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            box-shadow: 0 4px 10px rgba(37, 211, 102, 0.2);
-        }
+  .share-latest{
+    display:flex;justify-content:center;margin-top:18px;
+  }
+  .wa-btn{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--whatsapp);
+    color:#062A19;
+    font-weight:600;
+    font-size:14px;
+    border:none;
+    padding:11px 20px;
+    border-radius:999px;
+    cursor:pointer;
+    transition:filter .15s ease, opacity .15s ease;
+  }
+  .wa-btn:hover{filter:brightness(1.08);}
+  .wa-btn:disabled{opacity:.35; cursor:not-allowed;}
+  .wa-btn svg{width:17px;height:17px;fill:#062A19;}
 
-        .btn-whatsapp:active {
-            transform: scale(0.96);
-        }
+  .history{margin-top:34px;}
+  .history-title{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:12px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .history-title::after{content:"";flex:1;height:1px;background:var(--hair);}
 
-        .status-indicator {
-            text-align: center;
-            font-size: 0.85rem;
-            color: #8e8e93;
-            height: 20px;
-        }
-    </style>
+  .history-empty{
+    color:var(--muted); font-size:13px; text-align:center;
+    padding:26px 10px; border:1px dashed var(--hair); border-radius:14px;
+  }
+
+  .h-item{
+    background:var(--panel);
+    border:1px solid var(--hair);
+    border-radius:16px;
+    padding:14px 16px;
+    margin-bottom:10px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .h-row{display:flex;align-items:flex-start;gap:10px;}
+  .h-tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    padding:3px 8px;
+    border-radius:6px;
+    white-space:nowrap;
+    margin-top:2px;
+  }
+  .h-tag.a{background:var(--gold-dim); color:var(--gold);}
+  .h-tag.b{background:var(--cyan-dim); color:var(--cyan);}
+  .h-text{font-size:14px; line-height:1.5;}
+  .h-text.muted{color:var(--muted);}
+  .h-footer{display:flex;justify-content:flex-end;margin-top:2px;}
+  .h-share{
+    display:flex;align-items:center;gap:6px;
+    background:transparent;
+    border:1px solid var(--hair);
+    color:var(--muted);
+    font-family:inherit;
+    font-size:11px;
+    padding:5px 10px;
+    border-radius:999px;
+    cursor:pointer;
+    transition:border-color .15s ease, color .15s ease;
+  }
+  .h-share:hover{border-color:var(--whatsapp); color:var(--whatsapp);}
+  .h-share svg{width:12px;height:12px;fill:currentColor;}
+
+  .footnote{
+    text-align:center;
+    color:var(--muted);
+    font-size:11.5px;
+    margin-top:30px;
+    line-height:1.6;
+  }
+</style>
 </head>
 <body>
+<div class="app">
 
-    <div class="phone-container">
-        <header>
-            <h1>תרגום חכם בזמן אמת</h1>
-        </header>
+  <div class="head">
+    <div class="eyebrow">תרגום דו־כיווני · בזמן אמת</div>
+    <h1>מתרגם קולי חכם</h1>
+    <div class="sub">לחצו והחזיקו על אחד הכפתורים כדי לדבר — התרגום יופיע ויושמע בצד השני</div>
+  </div>
 
-        <div class="screen-area">
-            <div class="text-card">
-                <div>
-                    <span class="label">טקסט מקור</span>
-                    <p class="content" id="sourceText">לחץ והחזק כפתור שפה כדי להתחיל לדבר...</p>
-                </div>
-            </div>
+  <div class="panels">
+    <div class="panel" id="panelA">
+      <select class="lang-select" id="selectA"></select>
+      <div class="mic-wrap">
+        <button class="mic-btn side-a" id="btnA" aria-label="לחץ והחזק לדיבור בשפה א">
+          <span class="pulse-ring"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/>
+            <path d="M19 11a7 7 0 0 1-14 0"/>
+            <path d="M12 18v3"/>
+          </svg>
+        </button>
+      </div>
+      <div class="hint" id="hintA">לחץ והחזק לדיבור</div>
+      <div class="transcript empty" id="liveA">כאן יופיע מה שנאמר…</div>
+    </div>
 
-            <div class="text-card" style="background-color: #f0f7ff; border-color: #d0e1fd;">
-                <div>
-                    <span class="label">תרגום (בהתאמה להקשר)</span>
-                    <p class="content" id="translatedText">התרגום יופיע כאן...</p>
-                </div>
-            </div>
-        </div>
+    <div class="divider">
+      <div class="wave" id="waveA">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M4 12h16m0 0-5-5m5 5-5 5M20 6l-5 5" style="display:none"/><path d="M6 8h12M6 16h12" stroke-linecap="round"/></svg>
+      <div class="wave" id="waveB">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+    </div>
 
-        <div class="status-indicator" id="statusIndicator">מוכן לשימוש</div>
+    <div class="panel" id="panelB">
+      <select class="lang-select" id="selectB"></select>
+      <div class="mic-wrap">
+        <button class="mic-btn side-b" id="btnB" aria-label="לחץ והחזק לדיבור בשפה ב">
+          <span class="pulse-ring"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/>
+            <path d="M19 11a7 7 0 0 1-14 0"/>
+            <path d="M12 18v3"/>
+          </svg>
+        </button>
+      </div>
+      <div class="hint" id="hintB">לחץ והחזק לדיבור</div>
+      <div class="transcript empty" id="liveB">כאן יופיע מה שנאמר…</div>
+    </div>
+  </div>
 
-        <div class="controls-area">
-            <div class="language-buttons">
-                <button class="btn-talk btn-he" id="btnHebrew">עברית (החזק)</button>
-                <button class="btn-talk btn-en" id="btnEnglish">English (Hold)</button>
-            </div>
+  <div class="status-row"><div class="status-pill" id="status">מוכן להקשבה</div></div>
+  <div class="mic-prime-row" id="micPrimeRow">
+    <button class="mic-prime-btn" id="micPrimeBtn">אפשר גישה למיקרופון</button>
+    <span class="mic-prime-note" id="micPrimeNote">לחצו כאן פעם אחת בתחילת השימוש</span>
+  </div>
+  <div class="iframe-warning" id="iframeWarning" style="display:none;">
+    ⚠️ נראה שהעמוד נטען בתוך תצוגה מוטמעת (iframe). דפדפנים חוסמים או מגבילים זיהוי דיבור בתצוגות כאלה מטעמי פרטיות.
+    <br>אם ההקלטה לא עובדת: הורידו את הקובץ ופתחו אותו ישירות בכרטיסייה בדפדפן (לא בתוך חלון מוטמע) — כך זה יעבוד באופן מלא.
+  </div>
 
-            <button class="btn-whatsapp" id="btnShareWhatsApp">
-                שתף בוואטסאפ
-            </button>
+  <div class="apikey-box">
+    <div class="apikey-head" id="apikeyHead">
+      <div class="apikey-head-title">
+        <span class="apikey-status-dot" id="apikeyDot"></span>
+        מפתח API של Gemini (גוגל)
+      </div>
+      <span class="apikey-chevron" id="apikeyChevron">▾</span>
+    </div>
+    <div class="apikey-body" id="apikeyBody">
+      <div class="apikey-row">
+        <input type="password" id="apikeyInput" placeholder="AIza... או AQ.Ab...">
+        <button class="primary" id="apikeySave">שמור</button>
+        <button id="apikeyClear">נקה</button>
+      </div>
+      <div class="apikey-note">
+        נדרש מפתח API אישי כדי שהתרגום יעבוד כשהעמוד רץ כאתר עצמאי (לא בתוך claude.ai).
+        אפשר ליצור מפתח <b>חינמי לגמרי, בלי כרטיס אשראי</b> ב-
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>
+        (התחברות עם חשבון Google רגיל). מפתחות חדשים עשויים להתחיל ב-<code>AQ.</code> במקום <code>AIza</code> — זה תקין, גוגל עברה לפורמט חדש, ושתי הצורות עובדות כאן.
+        המפתח נשמר רק בדפדפן שלכם (localStorage) ונשלח ישירות מהדפדפן לגוגל — הוא לא עובר דרך שום שרת אחר.
+      </div>
+    </div>
+  </div>
+
+  <div class="share-latest">
+    <button class="wa-btn" id="shareLatest" disabled>
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.05-1.36A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.08-1.12l-.29-.17-3.02.81.81-2.94-.19-.3A8 8 0 1 1 12 20Zm4.4-5.9c-.24-.12-1.43-.7-1.65-.78-.22-.08-.38-.12-.54.12-.16.24-.62.78-.76.94-.14.16-.28.18-.52.06-.24-.12-1.02-.38-1.94-1.2-.72-.64-1.2-1.44-1.34-1.68-.14-.24-.02-.37.1-.49.11-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.47-.4-.4-.54-.4h-.46c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.32.98 2.48c.12.16 1.7 2.6 4.12 3.64.58.25 1.03.4 1.38.51.58.18 1.1.16 1.52.1.46-.07 1.43-.58 1.63-1.14.2-.56.2-1.04.14-1.14-.06-.1-.22-.16-.46-.28Z"/></svg>
+      שתף את התרגום האחרון בוואטסאפ
+    </button>
+  </div>
+
+  <div class="history">
+    <div class="history-title">היסטוריית שיחה</div>
+    <div id="historyList"><div class="history-empty">עדיין אין תרגומים — התחילו לדבר כדי לראות אותם כאן</div></div>
+  </div>
+
+  <div class="footnote">
+    התרגום מבוצע על ידי מודל שפה המבין הקשר משיחה קודמת (ולא רק מילה־במילה).<br>
+    זיהוי הדיבור וההשמעה הקולית מתבצעים בדפדפן שלכם — ייתכן שיידרש אישור גישה למיקרופון, ותמיכה עשויה להשתנות בין דפדפנים (מומלץ Chrome).
+  </div>
+
+</div>
+
+<script>
+const LANGUAGES = [
+  {code:'he-IL', name:'עברית'},
+  {code:'en-US', name:'אנגלית'},
+  {code:'ar-SA', name:'ערבית'},
+  {code:'ru-RU', name:'רוסית'},
+  {code:'fr-FR', name:'צרפתית'},
+  {code:'es-ES', name:'ספרדית'},
+  {code:'de-DE', name:'גרמנית'},
+  {code:'it-IT', name:'איטלקית'},
+  {code:'pt-PT', name:'פורטוגזית'},
+  {code:'zh-CN', name:'סינית (מנדרין)'},
+  {code:'ja-JP', name:'יפנית'},
+  {code:'hi-IN', name:'הינדי'},
+  {code:'am-ET', name:'אמהרית'},
+  {code:'tr-TR', name:'טורקית'},
+];
+
+const state = {
+  langA: 'he-IL',
+  langB: 'en-US',
+  isHolding: false,
+  activeSide: null,
+  recognition: null,
+  finalTranscript: '',
+  lastInterim: '',
+  finished: false,
+  safetyTimer: null,
+  history: [], // {side, sourceText, sourceLangName, targetText, targetLangName}
+  latest: null,
+};
+
+const els = {
+  selectA: document.getElementById('selectA'),
+  selectB: document.getElementById('selectB'),
+  btnA: document.getElementById('btnA'),
+  btnB: document.getElementById('btnB'),
+  panelA: document.getElementById('panelA'),
+  panelB: document.getElementById('panelB'),
+  hintA: document.getElementById('hintA'),
+  hintB: document.getElementById('hintB'),
+  liveA: document.getElementById('liveA'),
+  liveB: document.getElementById('liveB'),
+  waveA: document.getElementById('waveA'),
+  waveB: document.getElementById('waveB'),
+  status: document.getElementById('status'),
+  shareLatest: document.getElementById('shareLatest'),
+  historyList: document.getElementById('historyList'),
+  micPrimeBtn: document.getElementById('micPrimeBtn'),
+  micPrimeNote: document.getElementById('micPrimeNote'),
+  iframeWarning: document.getElementById('iframeWarning'),
+  apikeyHead: document.getElementById('apikeyHead'),
+  apikeyChevron: document.getElementById('apikeyChevron'),
+  apikeyBody: document.getElementById('apikeyBody'),
+  apikeyInput: document.getElementById('apikeyInput'),
+  apikeySave: document.getElementById('apikeySave'),
+  apikeyClear: document.getElementById('apikeyClear'),
+  apikeyDot: document.getElementById('apikeyDot'),
+};
+
+// ---------- API key management ----------
+const API_KEY_STORAGE = 'voice_translator_gemini_api_key';
+
+function loadApiKey(){
+  try{ return localStorage.getItem(API_KEY_STORAGE) || ''; }
+  catch(e){ return ''; }
+}
+function saveApiKey(key){
+  try{ localStorage.setItem(API_KEY_STORAGE, key); }catch(e){}
+}
+function clearApiKey(){
+  try{ localStorage.removeItem(API_KEY_STORAGE); }catch(e){}
+}
+function refreshApiKeyUI(){
+  const key = loadApiKey();
+  els.apikeyDot.classList.toggle('ok', !!key);
+  if(key) els.apikeyInput.value = key;
+}
+refreshApiKeyUI();
+
+els.apikeyHead.addEventListener('click', ()=>{
+  const open = els.apikeyBody.classList.toggle('open');
+  els.apikeyChevron.textContent = open ? '▴' : '▾';
+});
+els.apikeySave.addEventListener('click', ()=>{
+  const key = els.apikeyInput.value.trim();
+  if(!key){ setStatus('הדביקו מפתח API תקין', true); return; }
+  saveApiKey(key);
+  refreshApiKeyUI();
+  setStatus('מפתח נשמר — אפשר להתחיל לדבר');
+});
+els.apikeyClear.addEventListener('click', ()=>{
+  clearApiKey();
+  els.apikeyInput.value = '';
+  refreshApiKeyUI();
+  setStatus('מפתח נמחק');
+});
+
+// Detect whether we're running inside an embedded iframe (common cause of
+// mic permission repeatedly re-prompting, or speech recognition silently
+// failing even after permission is granted).
+try{
+  if(window.self !== window.top){
+    els.iframeWarning.style.display = 'block';
+  }
+}catch(e){
+  // Cross-origin access to window.top throws — that itself confirms we're
+  // in a cross-origin embedded frame.
+  els.iframeWarning.style.display = 'block';
+}
+
+let primedStream = null;
+els.micPrimeBtn.addEventListener('click', async ()=>{
+  els.micPrimeNote.textContent = 'מבקש הרשאה…';
+  try{
+    // Keep the stream alive (don't stop its tracks) — holding a live
+    // getUserMedia stream open is what convinces some browsers/embedded
+    // contexts to stop re-prompting on every subsequent recognition start.
+    primedStream = await navigator.mediaDevices.getUserMedia({audio:true});
+    els.micPrimeBtn.textContent = 'גישה למיקרופון אושרה ✓';
+    els.micPrimeBtn.classList.add('granted');
+    els.micPrimeBtn.classList.remove('denied');
+    els.micPrimeNote.textContent = 'אפשר להתחיל לדבר';
+  }catch(err){
+    els.micPrimeBtn.textContent = 'הגישה נחסמה — נסו שוב';
+    els.micPrimeBtn.classList.add('denied');
+    els.micPrimeNote.textContent = 'בדקו הרשאות מיקרופון בהגדרות הדפדפן/האתר';
+    setStatus('גישה למיקרופון נחסמה: ' + err.name, true);
+  }
+});
+
+function populateSelect(sel, selected){
+  LANGUAGES.forEach(l=>{
+    const opt = document.createElement('option');
+    opt.value = l.code;
+    opt.textContent = l.name;
+    if(l.code===selected) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+populateSelect(els.selectA, state.langA);
+populateSelect(els.selectB, state.langB);
+
+function langName(code){
+  const f = LANGUAGES.find(l=>l.code===code);
+  return f ? f.name : code;
+}
+
+els.selectA.addEventListener('change', e=> state.langA = e.target.value);
+els.selectB.addEventListener('change', e=> state.langB = e.target.value);
+
+function setStatus(text, warn){
+  els.status.textContent = text;
+  els.status.classList.toggle('warn', !!warn);
+}
+
+// ---------- Speech recognition ----------
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function startRecording(side){
+  if(state.isHolding) return;
+  if(!SR){
+    setStatus('זיהוי דיבור אינו נתמך בדפדפן זה — נסו Chrome', true);
+    return;
+  }
+  window.speechSynthesis && window.speechSynthesis.cancel();
+
+  state.activeSide = side;
+  state.isHolding = true;
+  state.finalTranscript = '';
+
+  const lang = side === 'a' ? state.langA : state.langB;
+  const rec = new SR();
+  rec.lang = lang;
+  rec.continuous = true;
+  rec.interimResults = true;
+
+  rec.onresult = (e)=>{
+    let interim = '';
+    for(let i = e.resultIndex; i < e.results.length; i++){
+      const t = e.results[i][0].transcript;
+      if(e.results[i].isFinal) state.finalTranscript += t + ' ';
+      else interim += t;
+    }
+    state.lastInterim = interim;
+    updateLive(side, (state.finalTranscript + interim).trim());
+  };
+
+  rec.onerror = (e)=>{
+    if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+      setStatus('הגישה למיקרופון נחסמה — לחצו על "אפשר גישה למיקרופון" למעלה', true);
+    } else if(e.error === 'audio-capture'){
+      setStatus('לא נמצא מיקרופון זמין במכשיר', true);
+    } else if(e.error === 'network'){
+      setStatus('שירות זיהוי הדיבור לא זמין (בעיית רשת/הרשאות בתצוגה מוטמעת) — נסו לפתוח את הקובץ ישירות בדפדפן', true);
+    } else if(e.error === 'no-speech'){
+      setStatus('לא נשמע דיבור — נסו לדבר קרוב יותר למיקרופון');
+    } else if(e.error !== 'aborted'){
+      setStatus('שגיאת זיהוי דיבור: ' + e.error, true);
+    }
+  };
+
+  rec.onend = ()=>{
+    // Only auto-restart while the button is still physically held down.
+    // If the user already released, do nothing here — stopRecording()
+    // already takes care of finishing up, so we never re-trigger it twice.
+    if(state.isHolding && state.recognition === rec){
+      try{ rec.start(); }catch(err){}
+    }
+  };
+
+  state.recognition = rec;
+  state.finished = false;
+  try{
+    rec.start();
+    setActiveUI(side, true);
+    setStatus(side==='a' ? 'מקשיב בעברית/בשפה א…' : 'מקשיב בשפה ב…');
+  }catch(err){
+    state.isHolding = false;
+    setStatus('לא ניתן להפעיל את המיקרופון', true);
+  }
+
+  // Safety net: if something goes wrong and release events never fire,
+  // don't listen forever.
+  clearTimeout(state.safetyTimer);
+  state.safetyTimer = setTimeout(()=>{
+    if(state.isHolding) stopRecording();
+  }, 20000);
+}
+
+function stopRecording(){
+  if(!state.isHolding) return;
+  const side = state.activeSide;
+  state.isHolding = false;
+  clearTimeout(state.safetyTimer);
+
+  const rec = state.recognition;
+  if(rec){
+    try{ rec.abort(); }catch(e){}
+    try{ rec.stop(); }catch(e){}
+  }
+  setActiveUI(side, false);
+
+  // Don't wait on onend (it can be delayed or skipped by the browser once
+  // we've called abort/stop) — finish immediately with whatever transcript
+  // we've accumulated so far, including any un-finalized interim text.
+  if(state.finished) return;
+  state.finished = true;
+  finishRecording(side);
+}
+
+function finishRecording(side){
+  let text = state.finalTranscript.trim();
+  if(!text && state.lastInterim) text = state.lastInterim.trim();
+  state.finalTranscript = '';
+  state.lastInterim = '';
+  if(!text){
+    setStatus('לא זוהה דיבור — נסו שוב');
+    return;
+  }
+  translateAndSpeak(text, side);
+}
+
+function setActiveUI(side, active){
+  const btn = side==='a' ? els.btnA : els.btnB;
+  const panel = side==='a' ? els.panelA : els.panelB;
+  const hint = side==='a' ? els.hintA : els.hintB;
+  const wave = side==='a' ? els.waveA : els.waveB;
+  btn.classList.toggle('recording', active);
+  panel.classList.toggle(side==='a' ? 'active-a':'active-b', active);
+  hint.textContent = active ? 'מקשיב… שחררו לסיום' : 'לחץ והחזק לדיבור';
+  wave.classList.toggle(side==='a' ? 'live-a':'live-b', active);
+  if(active) animateWave(wave); else resetWave(wave);
+}
+
+let waveIntervals = {};
+function animateWave(waveEl){
+  const spans = waveEl.querySelectorAll('span');
+  waveIntervals[waveEl.id] = setInterval(()=>{
+    spans.forEach(s=> s.style.height = (6 + Math.random()*26) + 'px');
+  }, 140);
+}
+function resetWave(waveEl){
+  clearInterval(waveIntervals[waveEl.id]);
+  waveEl.querySelectorAll('span').forEach(s=> s.style.height = '8px');
+}
+
+function updateLive(side, text){
+  const el = side==='a' ? els.liveA : els.liveB;
+  el.classList.remove('empty');
+  el.textContent = text || '…';
+}
+
+// ---------- Translation (context-aware via Claude) ----------
+async function translateAndSpeak(sourceText, side){
+  const apiKey = loadApiKey();
+  if(!apiKey){
+    setStatus('צריך קודם להזין מפתח API (פרטו למעלה) כדי לתרגם', true);
+    els.apikeyBody.classList.add('open');
+    els.apikeyChevron.textContent = '▴';
+    return;
+  }
+
+  setStatus('מתרגם…');
+  const fromCode = side==='a' ? state.langA : state.langB;
+  const toCode = side==='a' ? state.langB : state.langA;
+  const fromName = langName(fromCode);
+  const toName = langName(toCode);
+
+  const contextLines = state.history.slice(-6).map(h=>
+    `${h.sourceLangName}: ${h.sourceText}\n${h.targetLangName}: ${h.targetText}`
+  ).join('\n---\n');
+
+  const systemPrompt = `אתה מנוע תרגום מקצועי, טבעי ורגיש להקשר. תרגם את המשפט האחרון מ-${fromName} ל-${toName}.
+השתמש בהיסטוריית השיחה שסופקה (אם יש) כדי לפתור עמימויות, לשמור על עקביות מונחים, טון ורצף שיחה.
+החזר אך ורק את הטקסט המתורגם ב-${toName}, ללא הסברים, ללא מירכאות, ללא תגיות שפה, ללא טקסט נוסף.`;
+
+  const userPrompt = contextLines
+    ? `הקשר שיחה קודם:\n${contextLines}\n---\nתרגם עכשיו:\n${sourceText}`
+    : `תרגם:\n${sourceText}`;
+
+  try{
+    const model = "gemini-3.6-flash";
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey
+        },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: userPrompt }] }]
+        })
+      }
+    );
+
+    if(!response.ok){
+      let detail = '';
+      try{ const errJson = await response.json(); detail = errJson?.error?.message || ''; }catch(e){}
+      if(response.status === 400 || response.status === 403){
+        setStatus('מפתח API לא תקין — בדקו אותו בהגדרות למעלה', true);
+      } else if(response.status === 429){
+        setStatus('חרגתם ממכסת הבקשות החינמית לדקה — המתינו רגע ונסו שוב', true);
+      } else {
+        setStatus('שגיאת תרגום (' + response.status + ') ' + detail, true);
+      }
+      return;
+    }
+
+    const data = await response.json();
+    let translated = (data.candidates?.[0]?.content?.parts || [])
+      .map(p => p.text || '').join('').trim();
+    translated = translated.replace(/^["'"]|["'"]$/g,'').trim();
+
+    if(!translated){
+      setStatus('לא התקבל תרגום — נסו שוב', true);
+      return;
+    }
+
+    const targetLiveEl = side==='a' ? els.liveB : els.liveA;
+    targetLiveEl.classList.remove('empty');
+    targetLiveEl.classList.add(side==='a' ? 'result-b' : 'result-a');
+    targetLiveEl.textContent = translated;
+
+    const sourceLiveEl = side==='a' ? els.liveA : els.liveB;
+    sourceLiveEl.classList.remove('empty');
+    sourceLiveEl.textContent = sourceText;
+
+    speak(translated, toCode);
+
+    const entry = {
+      side,
+      sourceText, sourceLangName: fromName,
+      targetText: translated, targetLangName: toName,
+    };
+    state.history.push(entry);
+    state.latest = entry;
+    renderHistory();
+    els.shareLatest.disabled = false;
+
+    setStatus('מוכן להקשבה');
+  }catch(err){
+    console.error(err);
+    setStatus('שגיאת תרגום — בדקו חיבור לרשת ונסו שוב', true);
+  }
+}
+
+function speak(text, langCode){
+  if(!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = langCode;
+  const voices = window.speechSynthesis.getVoices();
+  const match = voices.find(v=>v.lang === langCode) || voices.find(v=>v.lang.startsWith(langCode.split('-')[0]));
+  if(match) utter.voice = match;
+  window.speechSynthesis.speak(utter);
+}
+// warm up voice list (some browsers load async)
+if(window.speechSynthesis){
+  window.speechSynthesis.onvoiceschanged = ()=>{};
+  window.speechSynthesis.getVoices();
+}
+
+// ---------- History rendering ----------
+function renderHistory(){
+  if(state.history.length === 0){
+    els.historyList.innerHTML = '<div class="history-empty">עדיין אין תרגומים — התחילו לדבר כדי לראות אותם כאן</div>';
+    return;
+  }
+  els.historyList.innerHTML = '';
+  [...state.history].reverse().forEach((h, idx)=>{
+    const item = document.createElement('div');
+    item.className = 'h-item';
+    item.innerHTML = `
+      <div class="h-row">
+        <span class="h-tag ${h.side}">${h.sourceLangName}</span>
+        <span class="h-text">${escapeHtml(h.sourceText)}</span>
+      </div>
+      <div class="h-row">
+        <span class="h-tag ${h.side==='a'?'b':'a'}">${h.targetLangName}</span>
+        <span class="h-text muted">${escapeHtml(h.targetText)}</span>
+      </div>
+      <div class="h-footer">
+        <button class="h-share" data-idx="${state.history.length-1-idx}">
+          <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.05-1.36A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.08-1.12l-.29-.17-3.02.81.81-2.94-.19-.3A8 8 0 1 1 12 20Z"/></svg>
+          שתף
+        </button>
+      </div>
+    `;
+    els.historyList.appendChild(item);
+  });
+  els.historyList.querySelectorAll('.h-share').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = parseInt(btn.getAttribute('data-idx'), 10);
+      shareEntry(state.history[idx]);
+    });
+  });
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function shareEntry(entry){
+  if(!entry) return;
+  // Share only the translated text (target language) — not the source text.
+  window.open(`https://wa.me/?text=${encodeURIComponent(entry.targetText)}`, '_blank');
+}
+
+els.shareLatest.addEventListener('click', ()=> shareEntry(state.latest));
+
+// ---------- Press & hold bindings (pointer events, with fallbacks) ----------
+// Pointer Events unify mouse/touch/pen and, combined with pointer capture,
+// guarantee the "up" event reaches this element even if the finger/cursor
+// drifts off the button while held — which is what caused recording to
+// get stuck "listening" after release.
+function bindHold(btn, side){
+  const start = (e)=>{
+    e.preventDefault();
+    if(e.pointerId !== undefined){
+      try{ btn.setPointerCapture(e.pointerId); }catch(err){}
+    }
+    startRecording(side);
+  };
+  const end = (e)=>{
+    e.preventDefault();
+    if(state.activeSide === side) stopRecording();
+  };
+
+  if(window.PointerEvent){
+    btn.addEventListener('pointerdown', start);
+    btn.addEventListener('pointerup', end);
+    btn.addEventListener('pointercancel', end);
+  } else {
+    // Fallback for older browsers without Pointer Events support
+    btn.addEventListener('mousedown', start);
+    btn.addEventListener('mouseup', end);
+    btn.addEventListener('mouseleave', end);
+    btn.addEventListener('touchstart', start, {passive:false});
+    btn.addEventListener('touchend', end);
+    btn.addEventListener('touchcancel', end);
+  }
+}
+bindHold(els.btnA, 'a');
+bindHold(els.btnB, 'b');
+
+// Global fail-safes: if the release event never reaches the button itself
+// (dragged off-screen, browser quirk, window lost focus mid-press, etc.)
+// make sure we still stop listening.
+window.addEventListener('pointerup', ()=>{ if(state.isHolding) stopRecording(); });
+window.addEventListener('pointercancel', ()=>{ if(state.isHolding) stopRecording(); });
+window.addEventListener('mouseup', ()=>{ if(state.isHolding) stopRecording(); });
+window.addEventListener('touchend', ()=>{ if(state.isHolding) stopRecording(); });
+window.addEventListener('blur', ()=>{ if(state.isHolding) stopRecording(); });
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden && state.isHolding) stopRecording();
+});
+
+if(!SR){
+  setStatus('זיהוי דיבור אינו נתמך בדפדפן זה — נסו Chrome', true);
+}
+</script>
+</body>
+</html>
+
         </div>
     </div>
 
