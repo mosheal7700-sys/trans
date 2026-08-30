@@ -74,15 +74,9 @@
     display:flex;
     flex-direction:column;
     gap:14px;
-    transition:box-shadow .25s ease, border-color .25s ease;
-    cursor:pointer;
-    user-select:none;
-    -webkit-user-select:none;
-    touch-action:manipulation;
   }
-  .panel.active-a{box-shadow:0 0 0 1px var(--gold), 0 12px 30px -8px rgba(227,168,87,.35); border-color:var(--gold);}
-  .panel.active-b{box-shadow:0 0 0 1px var(--cyan), 0 12px 30px -8px rgba(79,182,196,.35); border-color:var(--cyan);}
-  .panel:active{transform:scale(0.98);}
+  .panel.active-a .mic-btn{box-shadow:0 0 0 4px rgba(227,168,87,.35); border-color:var(--gold);}
+  .panel.active-b .mic-btn{box-shadow:0 0 0 4px rgba(79,182,196,.35); border-color:var(--cyan);}
 
   select.lang-select{
     background:var(--panel-2);
@@ -104,12 +98,17 @@
     width:104px;height:104px;
     border-radius:50%;
     border:none;
-    pointer-events:none; /* האירוע מנוהל על ידי הפאנל */
+    cursor:pointer;
     position:relative;
     display:flex;align-items:center;justify-content:center;
+    transition:transform .1s ease, box-shadow .2s ease;
+    touch-action:manipulation;
+    user-select:none;
+    -webkit-user-select:none;
   }
   .mic-btn.side-a{background:linear-gradient(160deg,#F0BE7C,var(--gold));}
   .mic-btn.side-b{background:linear-gradient(160deg,#8CDCE6,var(--cyan));}
+  .mic-btn:active{transform:scale(0.95);}
   .mic-btn svg{width:38px;height:38px;}
   .mic-btn.side-a svg{stroke:#241705;}
   .mic-btn.side-b svg{stroke:#052326;}
@@ -125,6 +124,8 @@
     font-size:15px;
     line-height:1.5;
     color:var(--ink);
+    user-select:text;
+    -webkit-user-select:text;
   }
   .transcript.empty{color:var(--muted); font-style:italic; font-size:13px;}
   .transcript.result-a{border-color:var(--gold-dim);}
@@ -262,14 +263,6 @@
   }
   .h-share:hover{border-color:var(--whatsapp); color:var(--whatsapp);}
   .h-share svg{width:12px;height:12px;fill:currentColor;}
-
-  .footnote{
-    text-align:center;
-    color:var(--muted);
-    font-size:11.5px;
-    margin-top:30px;
-    line-height:1.6;
-  }
 </style>
 </head>
 <body>
@@ -278,20 +271,20 @@
   <div class="head">
     <div class="eyebrow">תרגום דו־כיווני · בזמן אמת</div>
     <h1>מתרגם קולי חכם</h1>
-    <div class="sub">לחצו והחזיקו על אחד האזורים כדי לדבר — התרגום החכם יופיע ויושמע בצד השני</div>
+    <div class="sub">לחצו והחזיקו על כפתור המיקרופון כדי לדבר — התרגום יופיע בתיבת הטקסט ויושמע לצד השני</div>
   </div>
 
   <div class="panels">
     <div class="panel" id="panelA">
-      <select class="lang-select" id="selectA" onclick="event.stopPropagation()"></select>
+      <select class="lang-select" id="selectA"></select>
       <div class="mic-wrap">
-        <div class="mic-btn side-a">
+        <button class="mic-btn side-a" id="micA" aria-label="הקלט שפה א">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/>
             <path d="M19 11a7 7 0 0 1-14 0"/>
             <path d="M12 18v3"/>
           </svg>
-        </div>
+        </button>
       </div>
       <div class="hint" id="hintA">לחץ והחזק לדיבור</div>
       <div class="transcript empty" id="liveA">כאן יופיע מה שנאמר…</div>
@@ -302,15 +295,15 @@
     </div>
 
     <div class="panel" id="panelB">
-      <select class="lang-select" id="selectB" onclick="event.stopPropagation()"></select>
+      <select class="lang-select" id="selectB"></select>
       <div class="mic-wrap">
-        <div class="mic-btn side-b">
+        <button class="mic-btn side-b" id="micB" aria-label="הקלט שפה ב">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/>
             <path d="M19 11a7 7 0 0 1-14 0"/>
             <path d="M12 18v3"/>
           </svg>
-        </div>
+        </button>
       </div>
       <div class="hint" id="hintB">לחץ והחזק לדיבור</div>
       <div class="transcript empty" id="liveB">כאן יופיע מה שנאמר…</div>
@@ -385,6 +378,8 @@ const els = {
   selectB: document.getElementById('selectB'),
   panelA: document.getElementById('panelA'),
   panelB: document.getElementById('panelB'),
+  micA: document.getElementById('micA'),
+  micB: document.getElementById('micB'),
   hintA: document.getElementById('hintA'),
   hintB: document.getElementById('hintB'),
   liveA: document.getElementById('liveA'),
@@ -401,7 +396,6 @@ const els = {
   apikeyDot: document.getElementById('apikeyDot'),
 };
 
-// API Key management
 const API_KEY_STORAGE = 'voice_translator_gemini_api_key';
 function loadApiKey(){ try{ return localStorage.getItem(API_KEY_STORAGE) || ''; }catch(e){ return ''; } }
 function saveApiKey(key){ try{ localStorage.setItem(API_KEY_STORAGE, key); }catch(e){} }
@@ -456,7 +450,6 @@ function setStatus(text, warn){
   els.status.classList.toggle('warn', !!warn);
 }
 
-// Speech Recognition setup (Clean & Mobile Friendly)
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
 
@@ -507,7 +500,6 @@ function startRecording(side){
   };
 
   recognition.onend = () => {
-    // מופעל כשהדיבור נפסק או כשקוראים ל-stop
     if(state.isRecording){
       stopRecording(side);
     }
@@ -538,7 +530,6 @@ function stopRecording(side){
   translateAndSpeak(text, side);
 }
 
-// Smart Translation via Gemini
 async function translateAndSpeak(sourceText, side){
   const apiKey = loadApiKey();
   if(!apiKey){
@@ -567,7 +558,7 @@ async function translateAndSpeak(sourceText, side){
     : `תרגם:\n${sourceText}`;
 
   try{
-    const model = "gemini-3.6-flash"; // או gemini-3.6-flash לפי הצורך
+    const model = "gemini-3.6-flash";
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
@@ -630,7 +621,6 @@ function speak(text, langCode){
   window.speechSynthesis.speak(utter);
 }
 
-// History & Sharing
 function renderHistory(){
   if(state.history.length === 0){
     els.historyList.innerHTML = '<div class="history-empty">עדיין אין תרגומים — התחילו לדבר כדי לראות אותם כאן</div>';
@@ -672,31 +662,27 @@ function shareEntry(entry){
 
 els.shareLatest.addEventListener('click', ()=> shareEntry(state.latest));
 
-// Bind touch/mouse events cleanly like the working template
-function bindPanel(panel, side){
+function bindButton(btn, side){
   const start = (e) => {
-    // מניעת הפעלה בטעות אם לוחצים על תפריט בחירת השפה
-    if(e.target.tagName === 'SELECT') return;
     e.preventDefault();
     startRecording(side);
   };
   
   const end = (e) => {
-    if(e.target.tagName === 'SELECT') return;
     e.preventDefault();
     if(state.activeSide === side) {
       stopRecording(side);
     }
   };
 
-  panel.addEventListener('mousedown', start);
-  panel.addEventListener('mouseup', end);
-  panel.addEventListener('touchstart', start, {passive: false});
-  panel.addEventListener('touchend', end, {passive: false});
+  btn.addEventListener('mousedown', start);
+  btn.addEventListener('mouseup', end);
+  btn.addEventListener('touchstart', start, {passive: false});
+  btn.addEventListener('touchend', end, {passive: false});
 }
 
-bindPanel(els.panelA, 'a');
-bindPanel(els.panelB, 'b');
+bindButton(els.micA, 'a');
+bindButton(els.micB, 'b');
 
 if(!SpeechRecognition){
   setStatus('זיהוי דיבור אינו נתמך בדפדפן זה — מומלץ להשתמש ב־Chrome', true);
