@@ -552,12 +552,7 @@ els.micPrimeBtn.addEventListener('click', async ()=>{
     setStatus('גישה למיקרופון נחסמה: ' + err.name, true);
   }
 });
-    els.micPrimeBtn.textContent = 'הגישה נחסמה — נסו שוב';
-    els.micPrimeBtn.classList.add('denied');
-    els.micPrimeNote.textContent = 'בדקו הרשאות מיקרופון בהגדרות הדפדפן/האתר';
-    setStatus('גישה למיקרופון נחסמה: ' + err.name, true);
-  }
-});
+
 
 function populateSelect(sel, selected){
   LANGUAGES.forEach(l=>{
