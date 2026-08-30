@@ -100,7 +100,9 @@
     position:relative;
     display:flex;align-items:center;justify-content:center;
     transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease;
-    touch-action:manipulation;
+    touch-action:none; /* מונע גלילה במובייל בזמן החזקת הכפתור */
+    user-select:none;
+    -webkit-user-select:none;
   }
   .mic-btn.side-a{background:linear-gradient(160deg,#F0BE7C,var(--gold)); border:3px solid transparent;}
   .mic-btn.side-b{background:linear-gradient(160deg,#8CDCE6,var(--cyan)); border:3px solid transparent;}
@@ -290,7 +292,7 @@
   <div class="head">
     <div class="eyebrow">תרגום דו־כיווני · בזמן אמת</div>
     <h1>מתרגם קולי חכם</h1>
-    <div class="sub">לחצו על כפתור המיקרופון פעם אחת כדי להתחיל לדבר, ולחיצה נוספת לסיום</div>
+    <div class="sub">החזיקו את כפתור המיקרופון לחיצה רציפה בזמן דיבור, ושחררו לסיום</div>
   </div>
 
   <div class="panels">
@@ -305,7 +307,7 @@
           </svg>
         </button>
       </div>
-      <div class="hint" id="hintA">לחץ להקלטה</div>
+      <div class="hint" id="hintA">החזק כדי לדבר</div>
       <div class="transcript empty" id="liveA">כאן יופיע מה שנאמר…</div>
     </div>
 
@@ -324,7 +326,7 @@
           </svg>
         </button>
       </div>
-      <div class="hint" id="hintB">לחץ להקלטה</div>
+      <div class="hint" id="hintB">החזק כדי לדבר</div>
       <div class="transcript empty" id="liveB">כאן יופיע מה שנאמר…</div>
     </div>
   </div>
@@ -476,29 +478,18 @@ if(SpeechRecognition){
   recognition.interimResults = true;
 }
 
-function toggleRecording(side){
-  if(!recognition){
+function startRecording(side){
+  if(!recognition) {
     setStatus('זיהוי דיבור אינו נתמך בדפדפן זה', true);
     return;
   }
+  if(state.isRecording) return;
 
-  if(state.isRecording){
-    const currentSide = state.activeSide;
-    stopRecording(currentSide);
-    if(currentSide !== side){
-      setTimeout(() => startRecording(side), 150);
-    }
-  } else {
-    startRecording(side);
-  }
-}
-
-function startRecording(side){
   state.isRecording = true;
   state.activeSide = side;
   window.speechSynthesis && window.speechSynthesis.cancel();
 
-  // איפוס מלא של המלל הקודם והתרגום הקודם בשתי התיבות בתחילת הקלטה חדשה
+  // איפוס מלא של שתי התיבות בתחילת הקלטה חדשה
   els.liveA.textContent = "כאן יופיע מה שנאמר…";
   els.liveA.classList.add('empty');
   els.liveA.classList.remove('result-a', 'result-b');
@@ -516,22 +507,22 @@ function startRecording(side){
 
   liveEl.classList.remove('empty');
   liveEl.textContent = "מקשיב...";
-  hintEl.textContent = "לחץ שוב לסיום";
+  hintEl.textContent = "שחרר לסיום ותרגום";
   micEl.classList.add('recording');
   setStatus(side === 'a' ? 'מקשיב בשפה א…' : 'מקשיב בשפה ב…');
 
-  let finalTranscript = '';
-
   recognition.onresult = (event) => {
+    let final = '';
     let interim = '';
-    for(let i = event.resultIndex; i < event.results.length; i++){
+    // בניית הטקסט מחדש מכל תוצאות הסשן כדי למנוע כפילויות מילים
+    for(let i = 0; i < event.results.length; i++){
       if(event.results[i].isFinal){
-        finalTranscript += event.results[i][0].transcript;
+        final += event.results[i][0].transcript;
       } else {
         interim += event.results[i][0].transcript;
       }
     }
-    liveEl.textContent = finalTranscript || interim || "מקשיב...";
+    liveEl.textContent = final + interim || "מקשיב...";
   };
 
   recognition.onerror = (e) => {
@@ -539,10 +530,9 @@ function startRecording(side){
   };
 
   recognition.onend = () => {
+    // אם ההקלטה עדיין פעילה אבל הדפדפן סגר אותה אוטומטית
     if(state.isRecording && state.activeSide === side){
-      try {
-        recognition.start();
-      } catch(err) {}
+      try { recognition.start(); } catch(err){}
     }
   };
 
@@ -551,7 +541,7 @@ function startRecording(side){
   } catch(e) {
     try {
       recognition.stop();
-      setTimeout(() => recognition.start(), 100);
+      setTimeout(() => recognition.start(), 50);
     } catch(err) {
       state.isRecording = false;
       micEl.classList.remove('recording');
@@ -561,7 +551,7 @@ function startRecording(side){
 }
 
 function stopRecording(side){
-  if(!state.isRecording) return;
+  if(!state.isRecording || state.activeSide !== side) return;
   state.isRecording = false;
   state.activeSide = null;
 
@@ -570,7 +560,7 @@ function stopRecording(side){
   const liveEl = side === 'a' ? els.liveA : els.liveB;
 
   micEl.classList.remove('recording');
-  hintEl.textContent = "לחץ להקלטה";
+  hintEl.textContent = "החזק כדי לדבר";
 
   try { recognition.stop(); } catch(e){}
 
@@ -717,8 +707,28 @@ function shareEntry(entry){
 
 els.shareLatest.addEventListener('click', ()=> shareEntry(state.latest));
 
-els.micA.addEventListener('click', () => toggleRecording('a'));
-els.micB.addEventListener('click', () => toggleRecording('b'));
+// חיבור אירועי לחיצה רציפה (החזקה למקלדת ועכבר / מגע במובייל)
+function setupHoldToTalk(btn, side) {
+  const handleStart = (e) => {
+    e.preventDefault();
+    startRecording(side);
+  };
+  const handleEnd = (e) => {
+    e.preventDefault();
+    stopRecording(side);
+  };
+
+  btn.addEventListener('mousedown', handleStart);
+  btn.addEventListener('mouseup', handleEnd);
+  btn.addEventListener('mouseleave', handleEnd);
+
+  btn.addEventListener('touchstart', handleStart, {passive: false});
+  btn.addEventListener('touchend', handleEnd, {passive: false});
+  btn.addEventListener('touchcancel', handleEnd, {passive: false});
+}
+
+setupHoldToTalk(els.micA, 'a');
+setupHoldToTalk(els.micB, 'b');
 
 if(!SpeechRecognition){
   setStatus('זיהוי דיבור אינו נתמך בדפדפן זה — מומלץ להשתמש ב־Chrome', true);
