@@ -394,6 +394,9 @@ const state = {
   latest: null,
 };
 
+let finalTranscript = '';
+let interimTranscript = '';
+
 const els = {
   selectA: document.getElementById('selectA'),
   selectB: document.getElementById('selectB'),
@@ -489,6 +492,9 @@ function startRecording(side){
   state.activeSide = side;
   window.speechSynthesis && window.speechSynthesis.cancel();
 
+  finalTranscript = '';
+  interimTranscript = '';
+
   els.liveA.textContent = "כאן יופיע מה שנאמר…";
   els.liveA.classList.add('empty');
   els.liveA.classList.remove('result-a', 'result-b');
@@ -510,13 +516,17 @@ function startRecording(side){
   micEl.classList.add('recording');
   setStatus(side === 'a' ? 'מקשיב בשפה א…' : 'מקשיב בשפה ב…');
 
-  // קריאה ישירה של כל תוצאות הסשן מהדפדפן למניעת כפילויות מילים מוחלטת
   recognition.onresult = (event) => {
-    let currentText = '';
-    for(let i = 0; i < event.results.length; i++){
-      currentText += event.results[i][0].transcript;
+    interimTranscript = '';
+    for(let i = event.resultIndex; i < event.results.length; ++i){
+      if(event.results[i].isFinal){
+        finalTranscript += event.results[i][0].transcript + ' ';
+      } else {
+        interimTranscript += event.results[i][0].transcript;
+      }
     }
-    liveEl.textContent = currentText.trim() || "מקשיב...";
+    const combined = (finalTranscript + interimTranscript).trim();
+    liveEl.textContent = combined || "מקשיב...";
   };
 
   recognition.onerror = (e) => {
@@ -557,7 +567,7 @@ function stopRecording(side){
 
   try { recognition.stop(); } catch(e){}
 
-  const text = liveEl.textContent.trim();
+  const text = (finalTranscript + interimTranscript).trim() || liveEl.textContent.trim();
   if(!text || text === "מקשיב..." || text === "כאן יופיע מה שנאמר…"){
     setStatus('לא זוהה דיבור — נסו שוב');
     liveEl.textContent = "כאן יופיע מה שנאמר…";
