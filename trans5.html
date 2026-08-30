@@ -519,17 +519,12 @@ function createRecognizer(side, liveEl, hintEl, micEl){
     state.finalTranscript = (state.committed + finalPart);
     state.interimTranscript = interimPart;
 
-    // Only show text that has actually locked in (finalPart) — the raw,
-    // still-being-revised guess (interimPart) can flicker and briefly
-    // repeat words while the recognizer is still "thinking", which looks
-    // like duplication on screen even though nothing is wrong underneath.
-    // A trailing "…" indicates it's still listening/processing.
-    const stable = (state.committed + finalPart).trim();
-    if(stable){
-      liveEl.textContent = interimPart ? stable + ' …' : stable;
-    } else {
-      liveEl.textContent = 'מקשיב…';
-    }
+    // Don't render the growing live text at all — while you keep talking,
+    // each update naturally shows "everything said so far", which visually
+    // reads like repetition even though nothing is actually wrong. Just
+    // show a listening indicator instead; the real sentence appears once,
+    // cleanly, after you release the button.
+    liveEl.textContent = 'מקשיב… (דברו, ושחררו כשתסיימו)';
   };
 
   rec.onerror = (e) => {
@@ -586,7 +581,7 @@ function startRecording(side){
   const micEl = side === 'a' ? els.micA : els.micB;
 
   liveEl.classList.remove('empty');
-  liveEl.textContent = 'מקשיב…';
+  liveEl.textContent = 'מקשיב… (דברו, ושחררו כשתסיימו)';
   otherLiveEl.textContent = 'כאן יופיע מה שנאמר…';
   otherLiveEl.classList.add('empty');
   otherLiveEl.classList.remove('result-a', 'result-b');
@@ -859,3 +854,4 @@ if(!SpeechRecognitionAPI){
 </script>
 </body>
 </html>
+
