@@ -534,19 +534,24 @@ try{
   els.iframeWarning.style.display = 'block';
 }
 
-let primedStream = null;
 els.micPrimeBtn.addEventListener('click', async ()=>{
   els.micPrimeNote.textContent = 'מבקש הרשאה…';
   try{
-    // Keep the stream alive (don't stop its tracks) — holding a live
-    // getUserMedia stream open is what convinces some browsers/embedded
-    // contexts to stop re-prompting on every subsequent recognition start.
-    primedStream = await navigator.mediaDevices.getUserMedia({audio:true});
+    // מבקשים הרשאה ומיד משחררים את תפיסת החומרה של המיקרופון
+    const tempStream = await navigator.mediaDevices.getUserMedia({audio:true});
+    tempStream.getTracks().forEach(track => track.stop()); // שחרור נעילת החומרה בזמן שההרשאה נשמרת בדפדפן
+
     els.micPrimeBtn.textContent = 'גישה למיקרופון אושרה ✓';
     els.micPrimeBtn.classList.add('granted');
     els.micPrimeBtn.classList.remove('denied');
     els.micPrimeNote.textContent = 'אפשר להתחיל לדבר';
   }catch(err){
+    els.micPrimeBtn.textContent = 'הגישה נחסמה — נסו שוב';
+    els.micPrimeBtn.classList.add('denied');
+    els.micPrimeNote.textContent = 'בדקו הרשאות מיקרופון בהגדרות הדפדפן/האתר';
+    setStatus('גישה למיקרופון נחסמה: ' + err.name, true);
+  }
+});
     els.micPrimeBtn.textContent = 'הגישה נחסמה — נסו שוב';
     els.micPrimeBtn.classList.add('denied');
     els.micPrimeNote.textContent = 'בדקו הרשאות מיקרופון בהגדרות הדפדפן/האתר';
@@ -929,11 +934,5 @@ if(!SR){
   setStatus('זיהוי דיבור אינו נתמך בדפדפן זה — נסו Chrome', true);
 }
 </script>
-</body>
-</html>
-
-        </div>
-    </div>
-
 </body>
 </html>
