@@ -62,6 +62,7 @@
     margin-top:26px;
   }
   @media (max-width:620px){
+    body{zoom:0.75;}
     .panels{grid-template-columns:1fr;}
     .divider{flex-direction:row;padding:6px 0;}
     .panel{padding:14px 14px 16px; gap:10px;}
@@ -96,6 +97,26 @@
     text-align:center;
   }
   select.lang-select:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+
+  /* Distinct background per side, with enough contrast to stay readable */
+  select.lang-select.select-a{
+    background:var(--gold-dim);
+    color:var(--gold);
+    border-color:var(--gold-dim);
+    font-weight:600;
+  }
+  select.lang-select.select-b{
+    background:var(--cyan-dim);
+    color:var(--cyan);
+    border-color:var(--cyan-dim);
+    font-weight:600;
+  }
+  /* Native dropdown list options: force readable dark text on light system
+     background so they don't inherit the colored closed-state styling. */
+  select.lang-select option{
+    background:#fff;
+    color:#111;
+  }
 
   .mic-wrap{display:flex;justify-content:center;padding:6px 0 2px;}
   .mic-btn{
@@ -251,7 +272,7 @@
 
   <div class="panels">
     <div class="panel">
-      <select class="lang-select" id="selectA"></select>
+      <select class="lang-select select-a" id="selectA"></select>
       <div class="mic-wrap">
         <button class="mic-btn side-a" id="micA" aria-label="הקלט שפה א">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -270,7 +291,7 @@
     </div>
 
     <div class="panel">
-      <select class="lang-select" id="selectB"></select>
+      <select class="lang-select select-b" id="selectB"></select>
       <div class="mic-wrap">
         <button class="mic-btn side-b" id="micB" aria-label="הקלט שפה ב">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -785,5 +806,3 @@ if(!SpeechRecognitionAPI){
 </script>
 </body>
 </html>
-
-
