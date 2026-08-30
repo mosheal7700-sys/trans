@@ -654,7 +654,21 @@ async function translateAndSpeak(sourceText, side){
     return;
   }
 
-  setStatus('מתרגם חכם בהקשר השיחה…');
+  if(state.translateInFlight){
+    console.warn('translateAndSpeak called while a previous call is still in flight — skipping duplicate call.');
+    setStatus('כבר מתבצע תרגום — המתינו…', true);
+    return;
+  }
+  state.translateInFlight = true;
+
+  // Diagnostic request log — lets us see exactly how many real API calls
+  // are being fired, instead of guessing whether "quota reached" is real.
+  const now = Date.now();
+  state.requestLog = (state.requestLog || []).filter(t => now - t < 60000);
+  state.requestLog.push(now);
+  console.log(`[translate] request #${state.requestLog.length} in the last 60s, at ${new Date(now).toLocaleTimeString()}`);
+
+  setStatus(`מתרגם חכם בהקשר השיחה… (בקשה מס' ${state.requestLog.length} בדקה האחרונה)`);
   const fromCode = side === 'a' ? state.langA : state.langB;
   const toCode = side === 'a' ? state.langB : state.langA;
   const fromName = langName(fromCode);
@@ -690,7 +704,10 @@ async function translateAndSpeak(sourceText, side){
     );
 
     if(response.status === 429){
-      setStatus('הגעת למכסת הבקשות של מפתח ה-API (שגיאה 429). המתן כדקה ונסה שוב.', true);
+      let detail = '';
+      try{ const errJson = await response.json(); detail = errJson?.error?.message || ''; }catch(e){}
+      console.error('429 detail:', detail);
+      setStatus('חריגה ממכסה (429)' + (detail ? ': ' + detail : '') , true);
       return;
     }
     if(response.status === 404){
@@ -733,6 +750,8 @@ async function translateAndSpeak(sourceText, side){
   }catch(err){
     console.error(err);
     setStatus('שגיאת תקשורת בתרגום — בדקו חיבור לרשת', true);
+  }finally{
+    state.translateInFlight = false;
   }
 }
 
