@@ -395,6 +395,7 @@ const state = {
   latest: null,
   finalTranscript: '',
   interimTranscript: '',
+  committed: '',
   finishTimer: null,
   currentRecognition: null,
 };
@@ -485,44 +486,11 @@ const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechReco
 
 let finalized = true;
 
-function startRecording(side){
-  if(!SpeechRecognitionAPI){
-    setStatus('זיהוי דיבור אינו נתמך בדפדפן זה', true);
-    return;
-  }
-  if(state.isRecording) return;
-
-  finalized = false;
-  state.isRecording = true;
-  state.activeSide = side;
-  state.finalTranscript = '';
-  state.interimTranscript = '';
-  window.speechSynthesis && window.speechSynthesis.cancel();
-
-  const liveEl = side === 'a' ? els.liveA : els.liveB;
-  const otherLiveEl = side === 'a' ? els.liveB : els.liveA;
-  const hintEl = side === 'a' ? els.hintA : els.hintB;
-  const micEl = side === 'a' ? els.micA : els.micB;
-
-  liveEl.classList.remove('empty');
-  liveEl.textContent = 'מקשיב…';
-  otherLiveEl.textContent = 'כאן יופיע מה שנאמר…';
-  otherLiveEl.classList.add('empty');
-  otherLiveEl.classList.remove('result-a', 'result-b');
-
-  hintEl.textContent = 'שחרר לסיום ותרגום';
-  micEl.classList.add('recording');
-  setStatus(side === 'a' ? 'מפעיל מיקרופון (שפה א)…' : 'מפעיל מיקרופון (שפה ב)…');
-
+function createRecognizer(side, liveEl, hintEl, micEl){
   const rec = new SpeechRecognitionAPI();
   rec.lang = side === 'a' ? state.langA : state.langB;
   rec.continuous = true;
   rec.interimResults = true;
-  state.currentRecognition = rec;
-
-  // Carries over already-finalized text across an auto-restart (see onend
-  // below). Reset per press.
-  let base = '';
 
   rec.onstart = () => {
     setStatus(side === 'a' ? 'מקשיב בשפה א… דברו עכשיו' : 'מקשיב בשפה ב… דברו עכשיו');
@@ -533,13 +501,11 @@ function startRecording(side){
   };
 
   rec.onresult = (event) => {
-    // IMPORTANT: rebuild the final/interim text from the COMPLETE results
-    // list every time, instead of appending only the segment(s) pointed to
-    // by event.resultIndex. Chrome's Hebrew recognizer sometimes re-emits
-    // a growing partial as "final" more than once, and blindly appending
-    // deltas turns that into runaway duplication ("צריך צריך צריך...").
-    // Rebuilding from scratch each time is immune to that, since we never
-    // accumulate — we just recompute the current true state.
+    // Rebuild fresh from THIS instance's own results every time (never
+    // append deltas) — combined with always starting a brand-new
+    // recognizer on restart (see onend below), this is immune to
+    // platform differences in whether the browser clears its internal
+    // results list between sessions.
     let finalPart = '';
     let interimPart = '';
     for(let i = 0; i < event.results.length; i++){
@@ -550,9 +516,9 @@ function startRecording(side){
         interimPart += transcript;
       }
     }
-    state.finalTranscript = (base + finalPart);
+    state.finalTranscript = (state.committed + finalPart);
     state.interimTranscript = interimPart;
-    const combined = (base + finalPart + interimPart).trim();
+    const combined = (state.committed + finalPart + interimPart).trim();
     liveEl.textContent = combined || 'מקשיב…';
   };
 
@@ -570,21 +536,57 @@ function startRecording(side){
   };
 
   rec.onend = () => {
-    // The recognizer has fully wound down. If the button was already
-    // released (isRecording is false), finalize now with whatever
-    // transcript accumulated — this is the reliable point to read it from,
-    // NOT the moment of the button release itself (there's real network
-    // lag between "release" and the recognizer actually finishing).
     if(!state.isRecording && state.currentRecognition === rec){
       finalizeRecording(side, micEl, hintEl, liveEl);
     } else if(state.isRecording && state.currentRecognition === rec){
-      // Browser auto-stopped (silence timeout) while button still held —
-      // carry over what's already finalized, then restart so holding the
-      // button keeps listening.
-      base = state.finalTranscript;
-      try{ rec.start(); }catch(err){}
+      // Browser auto-stopped (silence timeout) while button still held.
+      // Commit whatever THIS instance finalized so far, then create a
+      // genuinely NEW recognizer instance (not rec.start() again on the
+      // same object) — some Android Chrome builds don't reset their
+      // internal results list on restart, which combined with carrying
+      // text over ourselves caused words to be double counted.
+      state.committed = state.finalTranscript;
+      const newRec = createRecognizer(side, liveEl, hintEl, micEl);
+      state.currentRecognition = newRec;
+      try{ newRec.start(); }catch(err){}
     }
   };
+
+  return rec;
+}
+
+function startRecording(side){
+  if(!SpeechRecognitionAPI){
+    setStatus('זיהוי דיבור אינו נתמך בדפדפן זה', true);
+    return;
+  }
+  if(state.isRecording) return;
+
+  finalized = false;
+  state.isRecording = true;
+  state.activeSide = side;
+  state.finalTranscript = '';
+  state.interimTranscript = '';
+  state.committed = '';
+  window.speechSynthesis && window.speechSynthesis.cancel();
+
+  const liveEl = side === 'a' ? els.liveA : els.liveB;
+  const otherLiveEl = side === 'a' ? els.liveB : els.liveA;
+  const hintEl = side === 'a' ? els.hintA : els.hintB;
+  const micEl = side === 'a' ? els.micA : els.micB;
+
+  liveEl.classList.remove('empty');
+  liveEl.textContent = 'מקשיב…';
+  otherLiveEl.textContent = 'כאן יופיע מה שנאמר…';
+  otherLiveEl.classList.add('empty');
+  otherLiveEl.classList.remove('result-a', 'result-b');
+
+  hintEl.textContent = 'שחרר לסיום ותרגום';
+  micEl.classList.add('recording');
+  setStatus(side === 'a' ? 'מפעיל מיקרופון (שפה א)…' : 'מפעיל מיקרופון (שפה ב)…');
+
+  const rec = createRecognizer(side, liveEl, hintEl, micEl);
+  state.currentRecognition = rec;
 
   try {
     rec.start();
@@ -828,3 +830,4 @@ if(!SpeechRecognitionAPI){
 </script>
 </body>
 </html>
+
