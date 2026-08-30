@@ -101,6 +101,7 @@
     display:flex;align-items:center;justify-content:center;
     transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease;
     touch-action:none;
+    -webkit-tap-highlight-color:transparent;
     user-select:none;
     -webkit-user-select:none;
   }
@@ -475,24 +476,195 @@ function setStatus(text, warn){
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
 
+/*
+ * Speech recognition on mobile Chrome can end a recognition session
+ * automatically.  We therefore treat "onend" as a session restart while
+ * the user is still holding the microphone, rather than as the end of speech.
+ *
+ * We also keep final results in an array. This avoids repeatedly appending
+ * the same result when Chrome sends overlapping result events.
+ */
+let recognitionRunning = false;
+let shouldKeepRecording = false;
+let recognitionGeneration = 0;
+let finalParts = [];
+let interimTranscript = '';
+
 if(SpeechRecognition){
   recognition = new SpeechRecognition();
   recognition.continuous = true;
   recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+}
+
+function getLiveElements(side){
+  return {
+    liveEl: side === 'a' ? els.liveA : els.liveB,
+    hintEl: side === 'a' ? els.hintA : els.hintB,
+    micEl: side === 'a' ? els.micA : els.micB
+  };
+}
+
+function buildRecognizedText(){
+  return finalParts.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function updateLiveTranscript(side){
+  const {liveEl} = getLiveElements(side);
+  const finalText = buildRecognizedText();
+  const combined = [finalText, interimTranscript]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  liveEl.classList.remove('empty');
+  liveEl.textContent = combined || "מקשיב...";
+}
+
+function configureRecognition(side){
+  if(!recognition) return;
+
+  recognition.lang = side === 'a' ? state.langA : state.langB;
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+
+  const generation = recognitionGeneration;
+
+  recognition.onresult = (event) => {
+    if(generation !== recognitionGeneration) return;
+
+    /*
+     * IMPORTANT:
+     * Process only newly delivered result indexes.
+     * Chrome may resend the current result collection after restarting.
+     * We therefore replace/update the result at its original index instead
+     * of blindly appending every transcript.
+     */
+    for(let i = event.resultIndex; i < event.results.length; i++){
+      const result = event.results[i];
+      if(!result || !result[0]) continue;
+
+      const transcript = (result[0].transcript || '').trim();
+      if(!transcript) continue;
+
+      if(result.isFinal){
+        finalParts[i] = transcript;
+      } else {
+        interimTranscript = transcript;
+      }
+    }
+
+    finalParts = finalParts.filter(Boolean);
+    updateLiveTranscript(side);
+  };
+
+  recognition.onerror = (e) => {
+    console.warn("Speech recognition error:", e.error || e);
+
+    /*
+     * These errors can happen transiently on mobile. Do not immediately
+     * terminate a hold-to-talk session for aborted/no-speech/network errors.
+     */
+    if(!shouldKeepRecording) return;
+
+    if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+      shouldKeepRecording = false;
+      state.isRecording = false;
+      recognitionRunning = false;
+
+      const {micEl, hintEl} = getLiveElements(side);
+      micEl.classList.remove('recording');
+      hintEl.textContent = "החזק כדי לדבר";
+      setStatus('אין הרשאה למיקרופון', true);
+      return;
+    }
+
+    if(e.error === 'audio-capture'){
+      shouldKeepRecording = false;
+      state.isRecording = false;
+      recognitionRunning = false;
+
+      const {micEl, hintEl} = getLiveElements(side);
+      micEl.classList.remove('recording');
+      hintEl.textContent = "החזק כדי לדבר";
+      setStatus('לא ניתן לגשת למיקרופון', true);
+    }
+  };
+
+  recognition.onend = () => {
+    recognitionRunning = false;
+
+    /*
+     * Mobile Chrome frequently ends a recognition session by itself.
+     * If the finger is still on the button, start a fresh session.
+     */
+    if(
+      shouldKeepRecording &&
+      state.isRecording &&
+      state.activeSide === side &&
+      generation === recognitionGeneration
+    ){
+      setTimeout(() => {
+        if(
+          shouldKeepRecording &&
+          state.isRecording &&
+          state.activeSide === side &&
+          generation === recognitionGeneration &&
+          !recognitionRunning
+        ){
+          try{
+            recognition.start();
+            recognitionRunning = true;
+          }catch(e){
+            console.warn("Speech recognition restart failed:", e);
+            setTimeout(() => {
+              if(
+                shouldKeepRecording &&
+                state.isRecording &&
+                state.activeSide === side &&
+                generation === recognitionGeneration &&
+                !recognitionRunning
+              ){
+                try{
+                  recognition.start();
+                  recognitionRunning = true;
+                }catch(err){
+                  console.warn("Second speech recognition restart failed:", err);
+                }
+              }
+            }, 180);
+          }
+        }
+      }, 80);
+    }
+  };
 }
 
 function startRecording(side){
-  if(!recognition) {
+  if(!recognition){
     setStatus('זיהוי דיבור אינו נתמך בדפדפן זה', true);
     return;
   }
+
   if(state.isRecording) return;
+
+  const {liveEl, hintEl, micEl} = getLiveElements(side);
 
   state.isRecording = true;
   state.activeSide = side;
+  shouldKeepRecording = true;
+  recognitionRunning = false;
+  recognitionGeneration++;
+
   window.speechSynthesis && window.speechSynthesis.cancel();
 
-  finalTranscript = '';
+  /*
+   * New utterance = new result buffer.
+   * Do not carry anything from the previous recording.
+   */
+  finalParts = [];
   interimTranscript = '';
 
   els.liveA.textContent = "כאן יופיע מה שנאמר…";
@@ -503,244 +675,144 @@ function startRecording(side){
   els.liveB.classList.add('empty');
   els.liveB.classList.remove('result-a', 'result-b');
 
-  const lang = side === 'a' ? state.langA : state.langB;
-  recognition.lang = lang;
-
-  const liveEl = side === 'a' ? els.liveA : els.liveB;
-  const hintEl = side === 'a' ? els.hintA : els.hintB;
-  const micEl = side === 'a' ? els.micA : els.micB;
+  configureRecognition(side);
 
   liveEl.classList.remove('empty');
   liveEl.textContent = "מקשיב...";
   hintEl.textContent = "שחרר לסיום ותרגום";
   micEl.classList.add('recording');
+
   setStatus(side === 'a' ? 'מקשיב בשפה א…' : 'מקשיב בשפה ב…');
 
-  recognition.onresult = (event) => {
-    interimTranscript = '';
-    for(let i = event.resultIndex; i < event.results.length; ++i){
-      if(event.results[i].isFinal){
-        finalTranscript += event.results[i][0].transcript + ' ';
-      } else {
-        interimTranscript += event.results[i][0].transcript;
-      }
-    }
-    const combined = (finalTranscript + interimTranscript).trim();
-    liveEl.textContent = combined || "מקשיב...";
-  };
-
-  recognition.onerror = (e) => {
-    console.error("Speech error", e);
-  };
-
-  // מניעת הפעלה מחדש אוטומטית שגורמת לכפולות; במקום זאת, אם ההקלטה נפסקה לבד, נסיים ונשלח לתרגום
-  recognition.onend = () => {
-    if(state.isRecording && state.activeSide === side){
-      stopRecording(side);
-    }
-  };
-
-  try {
+  try{
     recognition.start();
-  } catch(e) {
-    state.isRecording = false;
-    micEl.classList.remove('recording');
-    setStatus('שגיאה בהפעלת מיקרופון', true);
+    recognitionRunning = true;
+  }catch(e){
+    console.warn("Speech recognition start failed:", e);
+
+    /*
+     * If Chrome reports that recognition is already starting/running,
+     * give it a short moment instead of treating it as a fatal error.
+     */
+    setTimeout(() => {
+      if(
+        shouldKeepRecording &&
+        state.isRecording &&
+        state.activeSide === side &&
+        !recognitionRunning
+      ){
+        try{
+          recognition.start();
+          recognitionRunning = true;
+        }catch(err){
+          console.error(err);
+          shouldKeepRecording = false;
+          state.isRecording = false;
+          recognitionRunning = false;
+          micEl.classList.remove('recording');
+          hintEl.textContent = "החזק כדי לדבר";
+          setStatus('שגיאה בהפעלת מיקרופון', true);
+        }
+      }
+    }, 150);
   }
 }
 
 function stopRecording(side){
   if(!state.isRecording || state.activeSide !== side) return;
+
+  /*
+   * First prevent onend from restarting the recognition.
+   */
+  shouldKeepRecording = false;
   state.isRecording = false;
   state.activeSide = null;
+  recognitionGeneration++;
 
-  const micEl = side === 'a' ? els.micA : els.micB;
-  const hintEl = side === 'a' ? els.hintA : els.hintB;
-  const liveEl = side === 'a' ? els.liveA : els.liveB;
+  const {micEl, hintEl, liveEl} = getLiveElements(side);
 
   micEl.classList.remove('recording');
   hintEl.textContent = "החזק כדי לדבר";
 
-  try { recognition.stop(); } catch(e){}
+  /*
+   * Stop recognition, but don't use interim text as the final text.
+   * Interim results are provisional and are one of the main causes of
+   * duplicated words on mobile.
+   */
+  try{
+    recognition.stop();
+  }catch(e){}
 
-  const text = (finalTranscript + interimTranscript).trim() || liveEl.textContent.trim();
-  if(!text || text === "מקשיב..." || text === "כאן יופיע מה שנאמר…"){
+  recognitionRunning = false;
+
+  const text = buildRecognizedText();
+
+  if(!text){
     setStatus('לא זוהה דיבור — נסו שוב');
     liveEl.textContent = "כאן יופיע מה שנאמר…";
     liveEl.classList.add('empty');
+    finalParts = [];
+    interimTranscript = '';
     return;
   }
 
+  liveEl.textContent = text;
   translateAndSpeak(text, side);
+
+  /*
+   * Clear only after the final text has been captured.
+   */
+  finalParts = [];
+  interimTranscript = '';
 }
 
-async function translateAndSpeak(sourceText, side){
-  const apiKey = loadApiKey();
-  if(!apiKey){
-    setStatus('צריך להזין מפתח API כדי לתרגם חכם', true);
-    els.apikeyBody.classList.add('open');
-    els.apikeyChevron.textContent = '▴';
-    return;
-  }
+function setupHoldToTalk(btn, side){
+  let pointerHeld = false;
 
-  setStatus('מתרגם חכם בהקשר השיחה…');
-  const fromCode = side === 'a' ? state.langA : state.langB;
-  const toCode = side === 'a' ? state.langB : state.langA;
-  const fromName = langName(fromCode);
-  const toName = langName(toCode);
-
-  const contextLines = state.history.slice(-6).map(h=>
-    `${h.sourceLangName}: ${h.sourceText}\n${h.targetLangName}: ${h.targetText}`
-  ).join('\n---\n');
-
-  const systemPrompt = `אתה מנוע תרגום מקצועי, טבעי ורגיש להקשר. תרגם את המשפט האחרון מ-${fromName} ל-${toName}.
-השתמש בהיסטוריית השיחה שסופקה (אם יש) כדי לשמור על עקביות.
-החזר אך ורק את הטקסט המתורגם ב-${toName}, ללא הסברים, מירכאות או תגיות.`;
-
-  const userPrompt = contextLines
-    ? `הקשר שיחה קודם:\n${contextLines}\n---\nתרגם עכשיו:\n${sourceText}`
-    : `תרגם:\n${sourceText}`;
-
-  try{
-    const model = "gemini-3.5-flash";
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey
-        },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: "user", parts: [{ text: userPrompt }] }]
-        })
-      }
-    );
-
-    if(response.status === 429){
-      setStatus('הגעת למכסת הבקשות של מפתח ה-API (שגיאה 429). המתן כדקה ונסה שוב.', true);
-      return;
-    }
-
-    if(response.status === 404){
-      setStatus('שגיאה 404: מודל התרגום לא נמצא או שכתובת ה-API שונתה.', true);
-      return;
-    }
-
-    if(!response.ok){
-      setStatus('שגיאה בתרגום מול גוגל (' + response.status + ')', true);
-      return;
-    }
-
-    const data = await response.json();
-    let translated = (data.candidates?.[0]?.content?.parts || [])
-      .map(p => p.text || '').join('').trim();
-    translated = translated.replace(/^["'"]|["'"]$/g,'').trim();
-
-    if(!translated){
-      setStatus('לא התקבל תרגום', true);
-      return;
-    }
-
-    const targetLiveEl = side === 'a' ? els.liveB : els.liveA;
-    targetLiveEl.classList.remove('empty');
-    targetLiveEl.classList.add(side === 'a' ? 'result-b' : 'result-a');
-    targetLiveEl.textContent = translated;
-
-    speak(translated, toCode);
-
-    const entry = {
-      side,
-      sourceText, sourceLangName: fromName,
-      targetText: translated, targetLangName: toName,
-    };
-    state.history.push(entry);
-    state.latest = entry;
-    renderHistory();
-    els.shareLatest.disabled = false;
-
-    setStatus('מוכן להקשבה');
-  }catch(err){
-    console.error(err);
-    setStatus('שגיאת תקשורת בתרגום', true);
-  }
-}
-
-function speak(text, langCode){
-  if(!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = langCode;
-  window.speechSynthesis.speak(utter);
-}
-
-function renderHistory(){
-  if(state.history.length === 0){
-    els.historyList.innerHTML = '<div class="history-empty">עדיין אין תרגומים — התחילו לדבר כדי לראות אותם כאן</div>';
-    return;
-  }
-  els.historyList.innerHTML = '';
-  [...state.history].reverse().forEach((h, idx)=>{
-    const item = document.createElement('div');
-    item.className = 'h-item';
-    item.innerHTML = `
-      <div class="h-row">
-        <span class="h-tag ${h.side}">${h.sourceLangName}</span>
-        <span class="h-text">${escapeHtml(h.sourceText)}</span>
-      </div>
-      <div class="h-row">
-        <span class="h-tag ${h.side==='a'?'b':'a'}">${h.targetLangName}</span>
-        <span class="h-text muted">${escapeHtml(h.targetText)}</span>
-      </div>
-      <div class="h-footer">
-        <button class="h-share" onclick="shareEntry(state.history[state.history.length-1-${idx}])">
-          שתף בוואטסאפ
-        </button>
-      </div>
-    `;
-    els.historyList.appendChild(item);
-  });
-}
-
-function escapeHtml(str){
-  const d = document.createElement('div');
-  d.textContent = str;
-  return d.innerHTML;
-}
-
-function shareEntry(entry){
-  if(!entry) return;
-  window.open(`https://wa.me/?text=${encodeURIComponent(entry.targetText)}`, '_blank');
-}
-
-els.shareLatest.addEventListener('click', ()=> shareEntry(state.latest));
-
-function setupHoldToTalk(btn, side) {
   const handleStart = (e) => {
-    e.preventDefault();
+    if(e) e.preventDefault();
+
+    /*
+     * Pointer events prevent touch + mouse from firing two independent
+     * start/stop sequences on mobile browsers.
+     */
+    if(pointerHeld) return;
+    pointerHeld = true;
+
+    try{
+      btn.setPointerCapture?.(e.pointerId);
+    }catch(err){}
+
     startRecording(side);
   };
+
   const handleEnd = (e) => {
-    e.preventDefault();
+    if(e) e.preventDefault();
+    if(!pointerHeld) return;
+
+    pointerHeld = false;
     stopRecording(side);
   };
 
-  btn.addEventListener('mousedown', handleStart);
-  btn.addEventListener('mouseup', handleEnd);
-  btn.addEventListener('mouseleave', handleEnd);
+  if(window.PointerEvent){
+    btn.addEventListener('pointerdown', handleStart);
+    btn.addEventListener('pointerup', handleEnd);
+    btn.addEventListener('pointercancel', handleEnd);
+    btn.addEventListener('lostpointercapture', handleEnd);
+  }else{
+    btn.addEventListener('mousedown', handleStart);
+    btn.addEventListener('mouseup', handleEnd);
+    btn.addEventListener('mouseleave', handleEnd);
 
-  btn.addEventListener('touchstart', handleStart, {passive: false});
-  btn.addEventListener('touchend', handleEnd, {passive: false});
-  btn.addEventListener('touchcancel', handleEnd, {passive: false});
+    btn.addEventListener('touchstart', handleStart, {passive:false});
+    btn.addEventListener('touchend', handleEnd, {passive:false});
+    btn.addEventListener('touchcancel', handleEnd, {passive:false});
+  }
 }
 
 setupHoldToTalk(els.micA, 'a');
 setupHoldToTalk(els.micB, 'b');
 
-if(!SpeechRecognition){
-  setStatus('זיהוי דיבור אינו נתמך בדפדפן זה — מומלץ להשתמש ב־Chrome', true);
-}
 </script>
 </body>
 </html>
