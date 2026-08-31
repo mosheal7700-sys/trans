@@ -354,7 +354,7 @@ function populateSelect(sel, selected){
   LANGUAGES.forEach(l=>{
     const opt = document.createElement('option');
     opt.value = l.code;
-    opt.textContent = `${l.en} - ${l.name}`;
+    opt.textContent = `${l.flag} ${l.en} - ${l.name}`;
     if(l.code===selected) opt.selected = true;
     sel.appendChild(opt);
   });
