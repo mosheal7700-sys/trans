@@ -174,7 +174,7 @@
     background:var(--panel-2);
     border:1px dashed var(--hair);
     border-radius:14px;
-    padding:12px 40px 12px 14px;
+    padding:12px 46px 12px 14px;
     min-height:52px;
     max-height:160px;
     overflow-y:auto;
@@ -193,20 +193,25 @@
     position:absolute;
     bottom:8px;
     left:8px;
-    width:28px;
-    height:28px;
+    width:34px;
+    height:34px;
     padding:0;
     display:flex;align-items:center;justify-content:center;
-    background:rgba(28,39,49,0.9);
-    border:1px solid var(--hair);
+    border:none;
     border-radius:50%;
-    color:var(--muted);
     cursor:pointer;
-    transition:border-color .15s ease, color .15s ease, opacity .15s ease, background .15s ease;
+    box-shadow:0 2px 8px rgba(0,0,0,.35);
+    transition:transform .15s ease, opacity .15s ease, box-shadow .15s ease;
   }
-  .google-btn svg{width:14px;height:14px;flex-shrink:0;}
-  .google-btn:hover:not(:disabled){border-color:var(--gold); color:var(--ink); background:rgba(28,39,49,1);}
-  .google-btn:disabled{opacity:.35; cursor:not-allowed;}
+  .google-btn svg{width:17px;height:17px;flex-shrink:0;}
+  .google-btn:hover:not(:disabled){transform:scale(1.08);}
+  .google-btn:active:not(:disabled){transform:scale(0.94);}
+  .google-btn:disabled{opacity:.4; cursor:not-allowed; box-shadow:none;}
+
+  /* Solid fill matching each mic button's own colors — a real "button"
+     look instead of a subtle outlined badge, so it's easy to spot. */
+  #googleA{background:linear-gradient(160deg,#F0BE7C,var(--gold)); color:#241705;}
+  #googleB{background:linear-gradient(160deg,#8CDCE6,var(--cyan)); color:#052326;}
 
   .divider{
     display:flex;
@@ -328,7 +333,7 @@
 // Get one free at: https://aistudio.google.com/apikey
 // Example: const EMBEDDED_API_KEY = "AIzaSyABCDEF1234567890abcdefgh";
 // ============================================================
-const EMBEDDED_API_KEY = "AQ.Ab8RN6KTuUcCm4rhq2qbqAxrjWbHOkdEOZ6eWI82Rxe0btgA6Q";
+const EMBEDDED_API_KEY = "AQ.Ab8RN6J_BJoXpkSV_nVsCRUnF5PkJoY5J4ZmHngw8qivJGVRLQ";
 
 const LANGUAGES = [
   {code:'he-IL', name:'עברית', en:'Hebrew', flag:'🇮🇱'},
