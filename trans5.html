@@ -624,7 +624,7 @@ function finalizeRecording(side, micEl, hintEl, liveEl){
 }
 
 async function translateAndSpeak(sourceText, side){
-  const apiKey = EMBEDDED_API_KEY;
+  const apiKey = (EMBEDDED_API_KEY || '').trim();
   if(!apiKey || apiKey === "PASTE_YOUR_GEMINI_API_KEY_HERE"){
     setStatus('לא הוגדר מפתח API בקוד — פתחו את הקובץ ומלאו אותו ב-EMBEDDED_API_KEY', true);
     return;
@@ -686,12 +686,11 @@ async function translateAndSpeak(sourceText, side){
       setStatus('חריגה ממכסה (429)' + (detail ? ': ' + detail : '') , true);
       return;
     }
-    if(response.status === 404){
-      setStatus('שגיאה 404: מודל התרגום לא נמצא או שכתובת ה-API שונתה.', true);
-      return;
-    }
     if(!response.ok){
-      setStatus('שגיאה בתרגום מול גוגל (' + response.status + ')', true);
+      let detail = '';
+      try{ const errJson = await response.json(); detail = errJson?.error?.message || ''; }catch(e){}
+      console.error(`${response.status} detail:`, detail);
+      setStatus(`שגיאה בתרגום מול גוגל (${response.status})` + (detail ? ': ' + detail : ''), true);
       return;
     }
 
