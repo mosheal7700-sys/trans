@@ -188,6 +188,22 @@
   .transcript.result-a{border-color:var(--gold-dim);}
   .transcript.result-b{border-color:var(--cyan-dim);}
 
+  .google-btn{
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    background:var(--panel-2);
+    border:1px solid var(--hair);
+    color:var(--muted);
+    font-family:inherit;
+    font-size:12.5px;
+    padding:7px 10px;
+    border-radius:10px;
+    cursor:pointer;
+    transition:border-color .15s ease, color .15s ease, opacity .15s ease;
+  }
+  .google-btn svg{width:14px;height:14px;flex-shrink:0;}
+  .google-btn:hover:not(:disabled){border-color:var(--gold); color:var(--ink);}
+  .google-btn:disabled{opacity:.4; cursor:not-allowed;}
+
   .divider{
     display:flex;
     flex-direction:column;
@@ -258,6 +274,10 @@
       </div>
       <div class="hint" id="hintA">החזק כדי לדבר</div>
       <div class="transcript empty" id="liveA">כאן יופיע מה שנאמר…</div>
+      <button class="google-btn" id="googleA" type="button" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        חפש בגוגל
+      </button>
     </div>
 
     <div class="divider">
@@ -277,6 +297,10 @@
       </div>
       <div class="hint" id="hintB">החזק כדי לדבר</div>
       <div class="transcript empty" id="liveB">כאן יופיע מה שנאמר…</div>
+      <button class="google-btn" id="googleB" type="button" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        חפש בגוגל
+      </button>
     </div>
   </div>
 
@@ -298,7 +322,7 @@
 // Get one free at: https://aistudio.google.com/apikey
 // Example: const EMBEDDED_API_KEY = "AIzaSyABCDEF1234567890abcdefgh";
 // ============================================================
-const EMBEDDED_API_KEY = "3333";
+const EMBEDDED_API_KEY = "**********************************";
 
 const LANGUAGES = [
   {code:'he-IL', name:'עברית', en:'Hebrew', flag:'🇮🇱'},
@@ -348,7 +372,17 @@ const els = {
   liveB: document.getElementById('liveB'),
   status: document.getElementById('status'),
   shareLatest: document.getElementById('shareLatest'),
+  googleA: document.getElementById('googleA'),
+  googleB: document.getElementById('googleB'),
 };
+
+function openGoogleSearch(liveEl){
+  const text = liveEl.textContent.trim();
+  if(!text) return;
+  window.open(`https://www.google.com/search?q=${encodeURIComponent(text)}`, '_blank');
+}
+els.googleA.addEventListener('click', ()=> openGoogleSearch(els.liveA));
+els.googleB.addEventListener('click', ()=> openGoogleSearch(els.liveB));
 
 function populateSelect(sel, selected){
   LANGUAGES.forEach(l=>{
@@ -500,6 +534,12 @@ function startRecording(side){
   otherLiveEl.classList.add('empty');
   otherLiveEl.classList.remove('result-a', 'result-b');
 
+  // Both boxes are about to be overwritten (this side with the new
+  // recording, the other side will be cleared) — disable search until
+  // there's real text again.
+  els.googleA.disabled = true;
+  els.googleB.disabled = true;
+
   hintEl.textContent = 'שחרר לסיום ותרגום';
   micEl.classList.add('recording');
   setStatus(side === 'a' ? 'מפעיל מיקרופון (שפה א)…' : 'מפעיל מיקרופון (שפה ב)…');
@@ -579,6 +619,7 @@ function finalizeRecording(side, micEl, hintEl, liveEl){
   }
 
   liveEl.textContent = text;
+  (side === 'a' ? els.googleA : els.googleB).disabled = false;
   translateAndSpeak(text, side);
 }
 
@@ -668,6 +709,7 @@ async function translateAndSpeak(sourceText, side){
     targetLiveEl.classList.remove('empty');
     targetLiveEl.classList.add(side === 'a' ? 'result-b' : 'result-a');
     targetLiveEl.textContent = translated;
+    (side === 'a' ? els.googleB : els.googleA).disabled = false;
 
     speak(translated, toCode);
 
