@@ -174,7 +174,7 @@
     background:var(--panel-2);
     border:1px dashed var(--hair);
     border-radius:14px;
-    padding:12px 14px;
+    padding:12px 40px 12px 14px;
     min-height:52px;
     max-height:160px;
     overflow-y:auto;
@@ -188,21 +188,25 @@
   .transcript.result-a{border-color:var(--gold-dim);}
   .transcript.result-b{border-color:var(--cyan-dim);}
 
+  .transcript-wrap{position:relative;}
   .google-btn{
-    display:flex;align-items:center;justify-content:center;gap:6px;
-    background:var(--panel-2);
+    position:absolute;
+    bottom:8px;
+    left:8px;
+    width:28px;
+    height:28px;
+    padding:0;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(28,39,49,0.9);
     border:1px solid var(--hair);
+    border-radius:50%;
     color:var(--muted);
-    font-family:inherit;
-    font-size:12.5px;
-    padding:7px 10px;
-    border-radius:10px;
     cursor:pointer;
-    transition:border-color .15s ease, color .15s ease, opacity .15s ease;
+    transition:border-color .15s ease, color .15s ease, opacity .15s ease, background .15s ease;
   }
   .google-btn svg{width:14px;height:14px;flex-shrink:0;}
-  .google-btn:hover:not(:disabled){border-color:var(--gold); color:var(--ink);}
-  .google-btn:disabled{opacity:.4; cursor:not-allowed;}
+  .google-btn:hover:not(:disabled){border-color:var(--gold); color:var(--ink); background:rgba(28,39,49,1);}
+  .google-btn:disabled{opacity:.35; cursor:not-allowed;}
 
   .divider{
     display:flex;
@@ -273,11 +277,12 @@
         </button>
       </div>
       <div class="hint" id="hintA">החזק כדי לדבר</div>
-      <div class="transcript empty" id="liveA">כאן יופיע מה שנאמר…</div>
-      <button class="google-btn" id="googleA" type="button" disabled>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        חפש בגוגל
-      </button>
+      <div class="transcript-wrap">
+        <div class="transcript empty" id="liveA">כאן יופיע מה שנאמר…</div>
+        <button class="google-btn" id="googleA" type="button" disabled title="חפש בגוגל" aria-label="חפש בגוגל">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        </button>
+      </div>
     </div>
 
     <div class="divider">
@@ -296,11 +301,12 @@
         </button>
       </div>
       <div class="hint" id="hintB">החזק כדי לדבר</div>
-      <div class="transcript empty" id="liveB">כאן יופיע מה שנאמר…</div>
-      <button class="google-btn" id="googleB" type="button" disabled>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        חפש בגוגל
-      </button>
+      <div class="transcript-wrap">
+        <div class="transcript empty" id="liveB">כאן יופיע מה שנאמר…</div>
+        <button class="google-btn" id="googleB" type="button" disabled title="חפש בגוגל" aria-label="חפש בגוגל">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        </button>
+      </div>
     </div>
   </div>
 
