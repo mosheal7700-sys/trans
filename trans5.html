@@ -333,7 +333,7 @@
 // Get one free at: https://aistudio.google.com/apikey
 // Example: const EMBEDDED_API_KEY = "AIzaSyABCDEF1234567890abcdefgh";
 // ============================================================
-const EMBEDDED_API_KEY = "************************************";
+const EMBEDDED_API_KEY = "*********************************";
 
 const LANGUAGES = [
   {code:'he-IL', name:'עברית', en:'Hebrew', flag:'🇮🇱'},
@@ -352,9 +352,26 @@ const LANGUAGES = [
   {code:'tr-TR', name:'טורקית', en:'Turkish', flag:'🇹🇷'},
 ];
 
+// Remember the last chosen language pair across sessions (closing/reopening
+// the app), so it doesn't reset to the Hebrew-English default every time.
+const LANG_PREF_STORAGE = 'voice_translator_lang_prefs';
+function loadLangPrefs(){
+  try{
+    const raw = localStorage.getItem(LANG_PREF_STORAGE);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    if(parsed && parsed.langA && parsed.langB) return parsed;
+  }catch(e){}
+  return null;
+}
+function saveLangPrefs(langA, langB){
+  try{ localStorage.setItem(LANG_PREF_STORAGE, JSON.stringify({langA, langB})); }catch(e){}
+}
+const savedLangPrefs = loadLangPrefs();
+
 const state = {
-  langA: 'he-IL',
-  langB: 'en-US',
+  langA: savedLangPrefs ? savedLangPrefs.langA : 'he-IL',
+  langB: savedLangPrefs ? savedLangPrefs.langB : 'en-US',
   isRecording: false,
   activeSide: null,
   stoppingSide: null,
@@ -412,8 +429,14 @@ function langName(code){
   return f ? f.name : code;
 }
 
-els.selectA.addEventListener('change', e=> state.langA = e.target.value);
-els.selectB.addEventListener('change', e=> state.langB = e.target.value);
+els.selectA.addEventListener('change', e=>{
+  state.langA = e.target.value;
+  saveLangPrefs(state.langA, state.langB);
+});
+els.selectB.addEventListener('change', e=>{
+  state.langB = e.target.value;
+  saveLangPrefs(state.langA, state.langB);
+});
 
 function setStatus(text, warn){
   els.status.textContent = text;
